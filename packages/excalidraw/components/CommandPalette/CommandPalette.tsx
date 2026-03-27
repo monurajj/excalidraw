@@ -413,6 +413,7 @@ function CommandPaletteInner({
             "png",
             "jpeg",
             "svg",
+            "pdf",
             "clipboard",
             "picture",
           ],

@@ -186,6 +186,23 @@ export const exportCanvas = async (
       mimeTypes: [IMAGE_MIME_TYPES.png],
       fileHandle,
     });
+  } else if (type === "pdf") {
+    const canvas = await tempCanvas;
+    const { jsPDF } = await import("jspdf");
+    const imgData = canvas.toDataURL(MIME_TYPES.png);
+    const pdf = new jsPDF({
+      orientation: canvas.width > canvas.height ? "landscape" : "portrait",
+      unit: "px",
+      format: [canvas.width, canvas.height],
+    });
+    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+    return fileSave(Promise.resolve(pdf.output("blob")), {
+      description: "Export to PDF",
+      name,
+      extension: "pdf",
+      mimeTypes: [MIME_TYPES.pdf],
+      fileHandle,
+    });
   } else if (type === "clipboard") {
     try {
       const blob = canvasToBlob(tempCanvas);

@@ -250,6 +250,7 @@ export const STRING_MIME_TYPES = {
   text: "text/plain",
   html: "text/html",
   json: "application/json",
+  pdf: "application/pdf",
   // excalidraw data
   excalidraw: "application/vnd.excalidraw+json",
   excalidrawClipboard: "application/vnd.excalidraw.clipboard+json",
@@ -279,6 +280,7 @@ export const ALLOWED_PASTE_MIME_TYPES = [
 export const EXPORT_IMAGE_TYPES = {
   png: "png",
   svg: "svg",
+  pdf: "pdf",
   clipboard: "clipboard",
 } as const;
 
