@@ -37,6 +37,8 @@ exports[`exportToSvg > with default arguments 1`] = `
   "editingGroupId": null,
   "editingTextElement": null,
   "elementsToHighlight": null,
+  "eraserBrushSize": 14,
+  "eraserMode": "object",
   "errorMessage": null,
   "exportBackground": true,
   "exportEmbedScene": false,

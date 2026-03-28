@@ -28,6 +28,7 @@ import {
   LineIcon,
   TextIcon,
   ImageIcon,
+  PdfImportIcon,
   frameToolIcon,
   EmbedIcon,
   laserPointerToolIcon,
@@ -359,6 +360,20 @@ export const MobileToolBar = ({
         />
       )}
 
+      {showImageToolOutside && app.props.UIOptions.tools?.image !== false && (
+        <ToolButton
+          type="button"
+          icon={PdfImportIcon}
+          title={capitalizeString(t("toolBar.pdf"))}
+          aria-label={capitalizeString(t("toolBar.pdf"))}
+          data-testid="toolbar-pdf"
+          onClick={() => {
+            trackEvent("toolbar", "pdf", "ui");
+            app.onPdfToolbarButtonClick();
+          }}
+        />
+      )}
+
       {/* Frame Tool */}
       {showFrameToolOutside && (
         <ToolButton
@@ -425,6 +440,15 @@ export const MobileToolBar = ({
               selected={activeTool.type === "image"}
             >
               {t("toolBar.image")}
+            </DropdownMenu.Item>
+          )}
+          {app.props.UIOptions.tools?.image !== false && (
+            <DropdownMenu.Item
+              onSelect={() => app.onPdfToolbarButtonClick()}
+              icon={PdfImportIcon}
+              data-testid="toolbar-pdf-menu"
+            >
+              {t("toolBar.pdf")}
             </DropdownMenu.Item>
           )}
           {!showFrameToolOutside && (

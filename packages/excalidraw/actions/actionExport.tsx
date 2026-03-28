@@ -448,15 +448,15 @@ export const actionLoadScene = register({
   },
   perform: async (elements, appState, _, app) => {
     try {
-      const {
-        elements: loadedElements,
-        appState: loadedAppState,
-        files,
-      } = await loadFromJSON(appState, elements);
+      const result = await loadFromJSON(appState, elements);
+      if (result.kind === "pdf") {
+        await app.loadFileToCanvas(result.file, result.fileHandle);
+        return false;
+      }
       return {
-        elements: loadedElements,
-        appState: loadedAppState,
-        files,
+        elements: result.elements,
+        appState: result.appState,
+        files: result.files,
         captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       };
     } catch (error: any) {

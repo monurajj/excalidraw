@@ -3,15 +3,19 @@ import React, { useEffect } from "react";
 import "./Range.scss";
 
 export type RangeProps = {
-  label: React.ReactNode;
+  /** Omit when the control is labeled by a parent (e.g. fieldset legend). */
+  label?: React.ReactNode;
   value: number;
   onChange: (value: number) => void;
   min?: number;
   max?: number;
   step?: number;
-  minLabel?: React.ReactNode;
+  /** Set to `false` to hide the fixed label under the track start (e.g. stroke width). */
+  minLabel?: React.ReactNode | false;
   hasCommonValue?: boolean;
   testId?: string;
+  /** When set, used for the value bubble instead of the raw number (e.g. append "%"). */
+  formatBubble?: (value: number) => React.ReactNode;
 };
 
 export const Range = ({
@@ -21,9 +25,10 @@ export const Range = ({
   min = 0,
   max = 100,
   step = 10,
-  minLabel = min,
+  minLabel,
   hasCommonValue = true,
   testId,
+  formatBubble,
 }: RangeProps) => {
   const rangeRef = React.useRef<HTMLInputElement>(null);
   const valueRef = React.useRef<HTMLDivElement>(null);
@@ -47,8 +52,17 @@ export const Range = ({
     }
   }, [max, min, value]);
 
+  const resolvedMinLabel =
+    minLabel === false
+      ? null
+      : minLabel !== undefined
+        ? minLabel
+        : min;
+
+  const ControlTag = label != null ? "label" : "div";
+
   return (
-    <label className="control-label">
+    <ControlTag className="control-label">
       {label}
       <div className="range-wrapper">
         <input
@@ -68,12 +82,19 @@ export const Range = ({
           value={value}
           className="range-input"
           data-testid={testId}
+          data-has-common-value={hasCommonValue ? "true" : "false"}
         />
         <div className="value-bubble" ref={valueRef}>
-          {value !== min ? value : null}
+          {formatBubble
+            ? formatBubble(value)
+            : value !== min
+              ? value
+              : null}
         </div>
-        <div className="zero-label">{minLabel}</div>
+        {resolvedMinLabel !== null && (
+          <div className="zero-label">{resolvedMinLabel}</div>
+        )}
       </div>
-    </label>
+    </ControlTag>
   );
 };

@@ -1,7 +1,13 @@
-import { KEYS, arrayToMap, randomId } from "@excalidraw/common";
+import {
+  KEYS,
+  MOBILE_ACTION_BUTTON_BG,
+  arrayToMap,
+  randomId,
+} from "@excalidraw/common";
 
 import {
   elementsAreInSameGroup,
+  getNonDeletedElements,
   newElementWith,
   selectGroupsFromGivenElements,
 } from "@excalidraw/element";
@@ -11,15 +17,30 @@ import { CaptureUpdateAction } from "@excalidraw/element";
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import { LockedIcon, UnlockedIcon } from "../components/icons";
+import { ToolButton } from "../components/ToolButton";
+import { useStylesPanelMode } from "../components/App";
 
-import { getSelectedElements } from "../scene";
+import { t } from "../i18n";
+import { getShortcutKey } from "../shortcut";
+import { getSelectedElements, isSomeElementSelected } from "../scene";
 
 import { register } from "./register";
 
-import type { AppState } from "../types";
+import type { AppClassProperties, AppState } from "../types";
 
 const shouldLock = (elements: readonly ExcalidrawElement[]) =>
   elements.every((el) => !el.locked);
+
+const isToggleElementLockToolbarVisible = (
+  app: AppClassProperties,
+  appState: Readonly<AppState>,
+) => {
+  const selectedElements = app.scene.getSelectedElements(appState);
+  return (
+    selectedElements.length > 0 &&
+    !selectedElements.some((element) => element.locked && element.frameId)
+  );
+};
 
 export const actionToggleElementLock = register({
   name: "toggleElementLock",
@@ -38,13 +59,8 @@ export const actionToggleElementLock = register({
     return shouldLock(selectedElements) ? LockedIcon : UnlockedIcon;
   },
   trackEvent: { category: "element" },
-  predicate: (elements, appState, _, app) => {
-    const selectedElements = app.scene.getSelectedElements(appState);
-    return (
-      selectedElements.length > 0 &&
-      !selectedElements.some((element) => element.locked && element.frameId)
-    );
-  },
+  predicate: (elements, appState, _, app) =>
+    isToggleElementLockToolbarVisible(app, appState),
   perform: (elements, appState, _, app) => {
     const selectedElements = app.scene.getSelectedElements({
       selectedElementIds: appState.selectedElementIds,
@@ -83,8 +99,6 @@ export const actionToggleElementLock = register({
 
       let nextGroupIds = element.groupIds;
 
-      // if locking together, add to group
-      // if unlocking, remove the temporary group
       if (nextLockState) {
         if (newGroupId) {
           nextGroupIds = [...nextGroupIds, newGroupId];
@@ -97,7 +111,6 @@ export const actionToggleElementLock = register({
 
       return newElementWith(element, {
         locked: nextLockState,
-        // do not recreate the array unncessarily
         groupIds:
           nextGroupIds.length !== element.groupIds.length
             ? nextGroupIds
@@ -151,6 +164,41 @@ export const actionToggleElementLock = register({
       }).length > 0
     );
   },
+  PanelComponent: ({ elements, appState, updateData, app }) => {
+    const isMobile = useStylesPanelMode() === "mobile";
+    const selectedForLock = app.scene.getSelectedElements({
+      selectedElementIds: appState.selectedElementIds,
+      includeBoundTextElement: true,
+      includeElementsInFrames: true,
+    });
+    const locking = shouldLock(selectedForLock);
+    const showToolbar = isToggleElementLockToolbarVisible(app, appState);
+
+    return (
+      <ToolButton
+        type="button"
+        hidden={!showToolbar}
+        visible={isSomeElementSelected(
+          getNonDeletedElements(elements),
+          appState,
+        )}
+        icon={locking ? LockedIcon : UnlockedIcon}
+        title={`${t(
+          locking ? "labels.elementLock.lock" : "labels.elementLock.unlock",
+        )} — ${getShortcutKey("CtrlOrCmd+Shift+L")}`}
+        aria-label={t(
+          locking ? "labels.elementLock.lock" : "labels.elementLock.unlock",
+        )}
+        data-testid="toggleElementLock-toolbar"
+        onClick={() => updateData(null)}
+        style={{
+          ...(isMobile && appState.openPopup !== "compactOtherProperties"
+            ? MOBILE_ACTION_BUTTON_BG
+            : {}),
+        }}
+      />
+    );
+  },
 });
 
 export const actionUnlockAllElements = register({
@@ -170,7 +218,6 @@ export const actionUnlockAllElements = register({
 
     const nextElements = elements.map((element) => {
       if (element.locked) {
-        // remove the temporary groupId if it exists
         const nextGroupIds = element.groupIds.filter(
           (gid) => !appState.lockedMultiSelections[gid],
         );
@@ -178,7 +225,6 @@ export const actionUnlockAllElements = register({
         return newElementWith(element, {
           locked: false,
           groupIds:
-            // do not recreate the array unncessarily
             element.groupIds.length !== nextGroupIds.length
               ? nextGroupIds
               : element.groupIds,

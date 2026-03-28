@@ -206,3 +206,17 @@
   --button-hover-bg: #363541;
   --button-bg: var(--color-surface-high);
 }
+
+.excalidraw .eraser-tool-options {
+  &__hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-primary-color);
+    line-height: 1.4;
+    opacity: 0.9;
+  }
+
+  fieldset:last-of-type {
+    margin-bottom: 0;
+  }
+}

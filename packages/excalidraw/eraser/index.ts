@@ -1,43 +1,26 @@
 import { arrayToMap, easeOut, THEME } from "@excalidraw/common";
 
 import {
-  computeBoundTextPosition,
-  doBoundsIntersect,
-  getBoundTextElement,
-  getElementBounds,
-  getElementLineSegments,
-  getFreedrawOutlineAsSegments,
-  getFreedrawOutlinePoints,
-  intersectElementWithLineSegment,
-  isArrowElement,
-  isFreeDrawElement,
-  isLineElement,
-  isPointInElement,
+  getBoundTextElementId,
+  getElementsInGroup,
+  hasBoundTextElement,
+  isBoundToContainer,
 } from "@excalidraw/element";
-import {
-  lineSegment,
-  lineSegmentsDistance,
-  pointFrom,
-  polygon,
-  polygonIncludesPointNonZero,
-} from "@excalidraw/math";
-
-import { getElementsInGroup } from "@excalidraw/element";
-
-import { shouldTestInside } from "@excalidraw/element";
-import { hasBoundTextElement, isBoundToContainer } from "@excalidraw/element";
-import { getBoundTextElementId } from "@excalidraw/element";
-
-import type { Bounds } from "@excalidraw/common";
-
-import type { GlobalPoint, LineSegment } from "@excalidraw/math/types";
-import type { ElementsMap, ExcalidrawElement } from "@excalidraw/element/types";
+import { lineSegment, pointFrom } from "@excalidraw/math";
+import { LaserPointer } from "@excalidraw/laser-pointer";
 
 import { AnimatedTrail } from "../animated-trail";
 
-import type { AnimationFrameHandler } from "../animation-frame-handler";
+import { eraserTest } from "./eraserHitTest";
 
+import type { GlobalPoint } from "@excalidraw/math/types";
+import type { ExcalidrawElement } from "@excalidraw/element/types";
+
+import type { AnimationFrameHandler } from "../animation-frame-handler";
 import type App from "../components/App";
+
+export { eraserTest, elementHitByEraserPath } from "./eraserHitTest";
+export { applyStrokeEraserToElements } from "./partialErase";
 
 export class EraserTrail extends AnimatedTrail {
   private elementsToErase: Set<ExcalidrawElement["id"]> = new Set();
@@ -46,7 +29,7 @@ export class EraserTrail extends AnimatedTrail {
   constructor(animationFrameHandler: AnimationFrameHandler, app: App) {
     super(animationFrameHandler, app, {
       streamline: 0.2,
-      size: 5,
+      size: 14,
       keepHead: true,
       sizeMapping: (c) => {
         const DECAY_TIME = 200;
@@ -69,6 +52,14 @@ export class EraserTrail extends AnimatedTrail {
     });
   }
 
+  protected createLaserPointer(): LaserPointer {
+    const size = Math.max(2, Math.min(56, this.app.state.eraserBrushSize ?? 14));
+    return new LaserPointer({
+      ...this.options,
+      size,
+    });
+  }
+
   startPath(x: number, y: number): void {
     this.endPath();
     super.startPath(x, y);
@@ -83,7 +74,22 @@ export class EraserTrail extends AnimatedTrail {
     return elementsToEraser;
   }
 
+  /** Scene-space points along the current eraser stroke (before endPath). */
+  peekCurrentPath(): GlobalPoint[] {
+    const t = this.getCurrentTrail();
+    if (!t?.originalPoints?.length) {
+      return [];
+    }
+    return t.originalPoints.map((p) => pointFrom<GlobalPoint>(p[0], p[1]));
+  }
+
   private updateElementsToBeErased(restoreToErase?: boolean) {
+    if (this.app.state.eraserMode === "stroke") {
+      return [];
+    }
+
+    const brushRadius = this.app.state.eraserBrushSize / 2;
+
     const eraserPath: GlobalPoint[] =
       super
         .getCurrentTrail()
@@ -93,8 +99,6 @@ export class EraserTrail extends AnimatedTrail {
       return [];
     }
 
-    // for efficiency and avoid unnecessary calculations,
-    // take only POINTS_ON_TRAIL points to form some number of segments
     const pathSegment = lineSegment<GlobalPoint>(
       eraserPath[eraserPath.length - 1],
       eraserPath[eraserPath.length - 2],
@@ -107,13 +111,13 @@ export class EraserTrail extends AnimatedTrail {
     const candidateElementsMap = arrayToMap(candidateElements);
 
     for (const element of candidateElements) {
-      // restore only if already added to the to-be-erased set
       if (restoreToErase && this.elementsToErase.has(element.id)) {
         const intersects = eraserTest(
           pathSegment,
           element,
           candidateElementsMap,
           this.app.state.zoom.value,
+          brushRadius,
         );
 
         if (intersects) {
@@ -150,6 +154,7 @@ export class EraserTrail extends AnimatedTrail {
           element,
           candidateElementsMap,
           this.app.state.zoom.value,
+          brushRadius,
         );
 
         if (intersects) {
@@ -194,113 +199,3 @@ export class EraserTrail extends AnimatedTrail {
     this.groupsToErase.clear();
   }
 }
-
-const eraserTest = (
-  pathSegment: LineSegment<GlobalPoint>,
-  element: ExcalidrawElement,
-  elementsMap: ElementsMap,
-  zoom: number,
-): boolean => {
-  const lastPoint = pathSegment[1];
-
-  // PERF: Do a quick bounds intersection test first because it's cheap
-  const threshold = isFreeDrawElement(element) ? 15 : element.strokeWidth / 2;
-  const segmentBounds = [
-    Math.min(pathSegment[0][0], pathSegment[1][0]) - threshold,
-    Math.min(pathSegment[0][1], pathSegment[1][1]) - threshold,
-    Math.max(pathSegment[0][0], pathSegment[1][0]) + threshold,
-    Math.max(pathSegment[0][1], pathSegment[1][1]) + threshold,
-  ] as Bounds;
-  const origElementBounds = getElementBounds(element, elementsMap);
-  const elementBounds: Bounds = [
-    origElementBounds[0] - threshold,
-    origElementBounds[1] - threshold,
-    origElementBounds[2] + threshold,
-    origElementBounds[3] + threshold,
-  ];
-
-  if (!doBoundsIntersect(segmentBounds, elementBounds)) {
-    return false;
-  }
-
-  // There are shapes where the inner area should trigger erasing
-  // even though the eraser path segment doesn't intersect with or
-  // get close to the shape's stroke
-  if (
-    shouldTestInside(element) &&
-    isPointInElement(lastPoint, element, elementsMap)
-  ) {
-    return true;
-  }
-
-  // Freedraw elements are tested for erasure by measuring the distance
-  // of the eraser path and the freedraw shape outline lines to a tolerance
-  // which offers a good visual precision at various zoom levels
-  if (isFreeDrawElement(element)) {
-    const outlinePoints = getFreedrawOutlinePoints(element);
-    const strokeSegments = getFreedrawOutlineAsSegments(
-      element,
-      outlinePoints,
-      elementsMap,
-    );
-    const tolerance = Math.max(2.25, 5 / zoom); // NOTE: Visually fine-tuned approximation
-
-    for (const seg of strokeSegments) {
-      if (lineSegmentsDistance(seg, pathSegment) <= tolerance) {
-        return true;
-      }
-    }
-
-    const poly = polygon(
-      ...(outlinePoints.map(([x, y]) =>
-        pointFrom<GlobalPoint>(element.x + x, element.y + y),
-      ) as GlobalPoint[]),
-    );
-
-    // PERF: Check only one point of the eraser segment. If the eraser segment
-    // start is inside the closed freedraw shape, the other point is either also
-    // inside or the eraser segment will intersect the shape outline anyway
-    if (polygonIncludesPointNonZero(pathSegment[0], poly)) {
-      return true;
-    }
-
-    return false;
-  }
-
-  const boundTextElement = getBoundTextElement(element, elementsMap);
-
-  if (isArrowElement(element) || (isLineElement(element) && !element.polygon)) {
-    const tolerance = Math.max(
-      element.strokeWidth,
-      (element.strokeWidth * 2) / zoom,
-    );
-
-    // If the eraser movement is so fast that a large distance is covered
-    // between the last two points, the distanceToElement miss, so we test
-    // agaist each segment of the linear element
-    const segments = getElementLineSegments(element, elementsMap);
-    for (const seg of segments) {
-      if (lineSegmentsDistance(seg, pathSegment) <= tolerance) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  return (
-    intersectElementWithLineSegment(element, elementsMap, pathSegment, 0, true)
-      .length > 0 ||
-    (!!boundTextElement &&
-      intersectElementWithLineSegment(
-        {
-          ...boundTextElement,
-          ...computeBoundTextPosition(element, boundTextElement, elementsMap),
-        },
-        elementsMap,
-        pathSegment,
-        0,
-        true,
-      ).length > 0)
-  );
-};

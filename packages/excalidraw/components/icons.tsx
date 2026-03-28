@@ -435,6 +435,15 @@ export const ImageIcon = createIcon(
   modifiedTablerIconProps,
 );
 
+export const PdfImportIcon = createIcon(
+  <g strokeWidth="1.25" fill="none">
+    <path d="M6 3h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+    <path d="M14 3v4h4" />
+    <path d="M8.5 12.5h7M8.5 15.5h5" strokeLinecap="round" />
+  </g>,
+  modifiedTablerIconProps,
+);
+
 // tabler-icons: eraser
 export const EraserIcon = createIcon(
   <g strokeWidth="1.5">

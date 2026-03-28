@@ -1,7 +1,7 @@
 import React from "react";
 import { vi } from "vitest";
 
-import { KEYS, reseed } from "@excalidraw/common";
+import { KEYS, reseed, strokeWidthToSliderPercent } from "@excalidraw/common";
 
 import { setDateTimeForTests } from "@excalidraw/common";
 
@@ -333,8 +333,10 @@ describe("contextMenu element", () => {
     UI.clickOnTestId("color-blue");
     // Fill style
     fireEvent.click(screen.getByTitle("Cross-hatch"));
-    // Stroke width
-    fireEvent.click(screen.getByTitle("Bold"));
+    // Stroke width (slider maps % → px; 2px is the former “Bold” default)
+    fireEvent.change(screen.getByTestId("strokeWidth"), {
+      target: { value: String(strokeWidthToSliderPercent(2)) },
+    });
     // Stroke style
     fireEvent.click(screen.getByTitle("Dotted"));
     // Roughness

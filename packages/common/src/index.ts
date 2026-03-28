@@ -2,6 +2,8 @@ export * from "./binary-heap";
 export * from "./bounds";
 export * from "./colors";
 export * from "./constants";
+export * from "./strokeWidthSlider";
+export * from "./eraserBrushSlider";
 export * from "./font-metadata";
 export * from "./queue";
 export * from "./keys";

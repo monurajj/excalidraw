@@ -241,6 +241,7 @@ import {
   StoreDelta,
   type ApplyToOptions,
   positionElementsOnGrid,
+  positionElementsVertically,
   calculateFixedPointForNonElbowArrowBinding,
   bindOrUnbindBindingElement,
   mutateElement,
@@ -354,7 +355,12 @@ import {
   type ParsedDataTransferFile,
 } from "../clipboard";
 
-import { exportCanvas, loadFromBlob } from "../data";
+import {
+  exportCanvas,
+  isPdfFile,
+  loadFromBlob,
+  pdfFileToImageFiles,
+} from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
 import { getCenter, getDistance } from "../gesture";
@@ -425,7 +431,7 @@ import { isMaybeMermaidDefinition } from "../mermaid";
 
 import { LassoTrail } from "../lasso";
 
-import { EraserTrail } from "../eraser";
+import { EraserTrail, applyStrokeEraserToElements } from "../eraser";
 
 import { getShortcutKey } from "../shortcut";
 
@@ -5066,6 +5072,24 @@ class App extends React.Component<AppProps, AppState> {
           this.toggleLock("keyboard");
           event.stopPropagation();
           return;
+        } else if (
+          event.code === CODES.NINE &&
+          event.shiftKey &&
+          !event[KEYS.CTRL_OR_CMD] &&
+          !event.altKey &&
+          !this.state.viewModeEnabled &&
+          this.isToolSupported("image")
+        ) {
+          trackEvent(
+            "toolbar",
+            "pdf",
+            `keyboard (${
+              this.editorInterface.formFactor === "phone" ? "mobile" : "desktop"
+            })`,
+          );
+          void this.onPdfToolbarButtonClick();
+          event.stopPropagation();
+          return;
         }
       }
 
@@ -5529,6 +5553,13 @@ class App extends React.Component<AppProps, AppState> {
           : null,
       } as const;
 
+      const nextOpenPopup =
+        nextActiveTool.type === "eraser"
+          ? prevState.openPopup
+          : prevState.openPopup === "eraserTool"
+            ? null
+            : prevState.openPopup;
+
       if (nextActiveTool.type === "freedraw") {
         this.store.scheduleCapture();
       }
@@ -5538,6 +5569,7 @@ class App extends React.Component<AppProps, AppState> {
           ...prevState,
           ...commonResets,
           activeTool: nextActiveTool,
+          openPopup: nextOpenPopup,
           ...(keepSelection
             ? {}
             : {
@@ -5552,6 +5584,7 @@ class App extends React.Component<AppProps, AppState> {
           ...prevState,
           ...commonResets,
           activeTool: nextActiveTool,
+          openPopup: nextOpenPopup,
           selectedElementIds: makeNextSelectedElementIds({}, prevState),
           selectedGroupIds: makeNextSelectedElementIds({}, prevState),
           editingGroupId: null,
@@ -5562,6 +5595,7 @@ class App extends React.Component<AppProps, AppState> {
         ...prevState,
         ...commonResets,
         activeTool: nextActiveTool,
+        openPopup: nextOpenPopup,
       };
     });
   };
@@ -7181,21 +7215,27 @@ class App extends React.Component<AppProps, AppState> {
       return;
     }
 
-    const hitElementMightBeLocked = this.getElementAtPosition(
+    const allHitElementsMove = this.getElementsAtPosition(
       scenePointerX,
       scenePointerY,
-      {
-        preferSelected: true,
-        includeLockedElements: true,
-      },
+      { includeLockedElements: true },
     );
+    const unlockedHitElementsMove = allHitElementsMove.filter((e) => !e.locked);
+    const hitElementMightBeLocked =
+      allHitElementsMove.length > 0
+        ? this.getElementAtPosition(scenePointerX, scenePointerY, {
+            allHitElements: allHitElementsMove,
+            preferSelected: true,
+          })
+        : null;
 
-    let hitElement: ExcalidrawElement | null = null;
-    if (hitElementMightBeLocked && hitElementMightBeLocked.locked) {
-      hitElement = null;
-    } else {
-      hitElement = hitElementMightBeLocked;
-    }
+    const hitElement: ExcalidrawElement | null =
+      unlockedHitElementsMove.length > 0
+        ? this.getElementAtPosition(scenePointerX, scenePointerY, {
+            allHitElements: unlockedHitElementsMove,
+            preferSelected: true,
+          })
+        : null;
 
     if (
       !this.handleIframeLikeElementHover({
@@ -7206,7 +7246,7 @@ class App extends React.Component<AppProps, AppState> {
     ) {
       this.hitLinkElement = this.getElementLinkAtPosition(
         scenePointer,
-        hitElementMightBeLocked,
+        hitElement ?? hitElementMightBeLocked,
       );
     }
 
@@ -8455,7 +8495,19 @@ class App extends React.Component<AppProps, AppState> {
             (el) => this.state.selectedElementIds[el.id],
           )
         ) {
-          pointerDownState.hit.element = null;
+          // Locked item on top (e.g. PDF/image): still resolve to the topmost
+          // *unlocked* hit so text and shapes above the art can be selected.
+          if (unlockedHitElements.length > 0) {
+            pointerDownState.hit.element =
+              pointerDownState.hit.element ??
+              this.getElementAtPosition(
+                pointerDownState.origin.x,
+                pointerDownState.origin.y,
+                { allHitElements: unlockedHitElements },
+              );
+          } else {
+            pointerDownState.hit.element = null;
+          }
         } else {
           // hitElement may already be set above, so check first
           pointerDownState.hit.element =
@@ -8468,7 +8520,7 @@ class App extends React.Component<AppProps, AppState> {
 
         this.hitLinkElement = this.getElementLinkAtPosition(
           pointerDownState.origin,
-          hitElementMightBeLocked,
+          pointerDownState.hit.element ?? hitElementMightBeLocked,
         );
 
         if (this.hitLinkElement) {
@@ -11015,12 +11067,48 @@ class App extends React.Component<AppProps, AppState> {
       const pointerEnd = this.lastPointerUpEvent || this.lastPointerMoveEvent;
 
       if (isEraserActive(this.state) && pointerStart && pointerEnd) {
+        const strokePath = this.eraserTrail.peekCurrentPath();
         this.eraserTrail.endPath();
 
         const draggedDistance = pointDistance(
           pointFrom(pointerStart.clientX, pointerStart.clientY),
           pointFrom(pointerEnd.clientX, pointerEnd.clientY),
         );
+
+        const brushR = this.state.eraserBrushSize / 2;
+
+        if (this.state.eraserMode === "stroke") {
+          let erasePath = strokePath;
+          const scenePointer = viewportCoordsToSceneCoords(
+            {
+              clientX: pointerEnd.clientX,
+              clientY: pointerEnd.clientY,
+            },
+            this.state,
+          );
+          if (draggedDistance === 0) {
+            erasePath = [pointFrom(scenePointer.x, scenePointer.y)];
+          } else if (erasePath.length < 2) {
+            erasePath = [
+              pointFrom(scenePointer.x, scenePointer.y),
+              pointFrom(scenePointer.x + 0.5, scenePointer.y + 0.5),
+            ];
+          }
+          const map = this.scene.getNonDeletedElementsMap();
+          const nextElements = applyStrokeEraserToElements(
+            this.scene.getElementsIncludingDeleted(),
+            map,
+            erasePath,
+            brushR,
+            this.state.zoom.value,
+          );
+          if (nextElements) {
+            this.scene.replaceAllElements(nextElements);
+            this.store.scheduleCapture();
+          }
+          this.elementsPendingErasure = new Set();
+          return;
+        }
 
         if (draggedDistance === 0) {
           const scenePointer = viewportCoordsToSceneCoords(
@@ -11626,6 +11714,48 @@ class App extends React.Component<AppProps, AppState> {
     }
   };
 
+  public onPdfToolbarButtonClick = async () => {
+    if (!this.isToolSupported("image")) {
+      return;
+    }
+    try {
+      const clientX = this.state.width / 2 + this.state.offsetLeft;
+      const clientY = this.state.height / 2 + this.state.offsetTop;
+
+      const { x, y } = viewportCoordsToSceneCoords(
+        { clientX, clientY },
+        this.state,
+      );
+
+      const files = await fileOpen({
+        description: "PDF",
+        extensions: ["pdf"],
+        multiple: true,
+      });
+
+      const fileArray = Array.isArray(files) ? files : [files];
+      const allPages: File[] = [];
+      for (const f of fileArray) {
+        const nf = await normalizeFile(f);
+        if (isPdfFile(nf)) {
+          allPages.push(...(await pdfFileToImageFiles(nf)));
+        }
+      }
+      if (allPages.length) {
+        void this.insertImages(allPages, x, y, "vertical");
+      }
+    } catch (error: any) {
+      if (error.name !== "AbortError") {
+        console.error(error);
+        this.setState({
+          errorMessage: error?.message || t("errors.pdfImportError"),
+        });
+      } else {
+        console.warn(error);
+      }
+    }
+  };
+
   private getImageNaturalDimensions = (
     imageElement: ExcalidrawImageElement,
     imageHTML: HTMLImageElement,
@@ -11773,14 +11903,28 @@ class App extends React.Component<AppProps, AppState> {
     }
   };
 
+  private insertPdfAsImages = async (
+    file: File,
+    sceneX: number,
+    sceneY: number,
+  ) => {
+    const imageFiles = await pdfFileToImageFiles(file);
+    return this.insertImages(imageFiles, sceneX, sceneY, "vertical");
+  };
+
   private insertImages = async (
     imageFiles: File[],
     sceneX: number,
     sceneY: number,
+    layout: "grid" | "vertical" = "grid",
   ) => {
     const gridPadding = 50 / this.state.zoom.value;
+    const positionElements =
+      layout === "vertical"
+        ? positionElementsVertically
+        : positionElementsOnGrid;
     // Create, position, and insert placeholders
-    const placeholders = positionElementsOnGrid(
+    const placeholders = positionElements(
       imageFiles.map(() => this.newImagePlaceholder({ sceneX, sceneY })),
       sceneX,
       sceneY,
@@ -11806,7 +11950,7 @@ class App extends React.Component<AppProps, AppState> {
     );
     const initializedMap = arrayToMap(initialized);
 
-    const positioned = positionElementsOnGrid(
+    const positioned = positionElements(
       initialized.filter((el) => !el.isDeleted),
       sceneX,
       sceneY,
@@ -11885,6 +12029,26 @@ class App extends React.Component<AppProps, AppState> {
     if (imageFiles.length > 0 && this.isToolSupported("image")) {
       return this.insertImages(imageFiles, sceneX, sceneY);
     }
+
+    const pdfFiles = fileItems
+      .map((data) => data.file)
+      .filter((f): f is File => !!f && isPdfFile(f));
+
+    if (pdfFiles.length > 0 && this.isToolSupported("image")) {
+      const allPages: File[] = [];
+      for (const f of pdfFiles) {
+        try {
+          allPages.push(...(await pdfFileToImageFiles(await normalizeFile(f))));
+        } catch (error: any) {
+          this.setState({
+            errorMessage: error?.message || t("errors.pdfImportError"),
+          });
+          return;
+        }
+      }
+      return this.insertImages(allPages, sceneX, sceneY, "vertical");
+    }
+
     const excalidrawLibrary_ids = dataTransferList.getData(
       MIME_TYPES.excalidrawlibIds,
     );
@@ -11965,6 +12129,38 @@ class App extends React.Component<AppProps, AppState> {
     fileHandle: FileSystemFileHandle | null,
   ) => {
     file = await normalizeFile(file);
+
+    if (isPdfFile(file)) {
+      if (!this.isToolSupported("image")) {
+        this.setState({
+          isLoading: false,
+          errorMessage: t("errors.imageToolNotSupported"),
+        });
+        return;
+      }
+      try {
+        const container = this.excalidrawContainerRef.current;
+        const rect = container?.getBoundingClientRect();
+        const clientX = rect
+          ? rect.left + rect.width / 2
+          : window.innerWidth / 2;
+        const clientY = rect
+          ? rect.top + rect.height / 2
+          : window.innerHeight / 2;
+        const { x, y } = viewportCoordsToSceneCoords(
+          { clientX, clientY },
+          this.state,
+        );
+        await this.insertPdfAsImages(file, x, y);
+      } catch (error: any) {
+        this.setState({
+          isLoading: false,
+          errorMessage: error?.message || t("errors.pdfImportError"),
+        });
+      }
+      return;
+    }
+
     try {
       const elements = this.scene.getElementsIncludingDeleted();
       let ret;

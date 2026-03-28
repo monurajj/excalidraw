@@ -6,7 +6,9 @@ import {
   CLASSES,
   KEYS,
   capitalizeString,
+  eraserBrushToSliderPercent,
   isTransparent,
+  sliderPercentToEraserBrush,
 } from "@excalidraw/common";
 
 import {
@@ -36,6 +38,7 @@ import { trackEvent } from "../analytics";
 import { useTunnels } from "../context/tunnels";
 
 import { t } from "../i18n";
+import { getShortcutKey } from "../shortcut";
 import {
   canChangeRoundness,
   canHaveArrowheads,
@@ -82,9 +85,14 @@ import {
   DotsHorizontalIcon,
   SelectionIcon,
   pencilIcon,
+  PdfImportIcon,
+  EraserIcon,
+  FreedrawIcon,
 } from "./icons";
 
 import { Island } from "./Island";
+import { RadioSelection } from "./RadioSelection";
+import { Range } from "./Range";
 
 import type {
   AppClassProperties,
@@ -100,6 +108,107 @@ const PROPERTIES_CLASSES = clsx([
   CLASSES.SHAPE_ACTIONS_THEME_SCOPE,
   "properties-content",
 ]);
+
+export const EraserToolOptions = ({
+  appState,
+  setAppState,
+}: {
+  appState: UIAppState;
+  setAppState: React.Component<any, AppState>["setState"];
+}) => {
+  const brushPercent = eraserBrushToSliderPercent(appState.eraserBrushSize);
+
+  return (
+    <div className={clsx("selected-shape-actions", "eraser-tool-options")}>
+      <p className="eraser-tool-options__hint">{t("eraserTool.hint")}</p>
+      <fieldset>
+        <legend>{t("eraserTool.type")}</legend>
+        <div className="buttonList">
+          <RadioSelection
+            group="eraser-mode"
+            options={[
+              {
+                value: "object" as const,
+                text: t("eraserTool.modeObject"),
+                icon: EraserIcon,
+                testId: "eraser-mode-object",
+              },
+              {
+                value: "stroke" as const,
+                text: t("eraserTool.modeStroke"),
+                icon: FreedrawIcon,
+                testId: "eraser-mode-stroke",
+              },
+            ]}
+            value={appState.eraserMode}
+            onChange={(mode) => setAppState({ eraserMode: mode })}
+          />
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>{t("eraserTool.brushSize")}</legend>
+        <Range
+          value={brushPercent}
+          min={1}
+          max={100}
+          step={1}
+          minLabel={false}
+          formatBubble={(v) => `${v}%`}
+          onChange={(p) =>
+            setAppState({
+              eraserBrushSize: sliderPercentToEraserBrush(p),
+            })
+          }
+          testId="eraser-brush-size"
+        />
+      </fieldset>
+    </div>
+  );
+};
+
+const EraserToolMobilePopover = ({
+  appState,
+  setAppState,
+  container,
+}: {
+  appState: UIAppState;
+  setAppState: React.Component<any, AppState>["setState"];
+  container: HTMLDivElement | null;
+}) => {
+  const isOpen = appState.openPopup === "eraserTool";
+
+  return (
+    <div className="compact-action-item" style={{ pointerEvents: "auto" }}>
+      <Popover.Root
+        open={isOpen}
+        onOpenChange={(open) => {
+          setAppState({ openPopup: open ? "eraserTool" : null });
+        }}
+      >
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            className={clsx("compact-action-button", { active: isOpen })}
+            title={t("eraserTool.settings")}
+            aria-label={t("eraserTool.settings")}
+          >
+            {EraserIcon}
+          </button>
+        </Popover.Trigger>
+        {isOpen && (
+          <PropertiesPopover
+            className={PROPERTIES_CLASSES}
+            container={container}
+            style={{ maxWidth: "13rem" }}
+            onClose={() => setAppState({ openPopup: null })}
+          >
+            <EraserToolOptions appState={appState} setAppState={setAppState} />
+          </PropertiesPopover>
+        )}
+      </Popover.Root>
+    </div>
+  );
+};
 
 export const canChangeStrokeColor = (
   appState: UIAppState,
@@ -301,6 +410,8 @@ export const SelectedShapeActions = ({
           <div className="buttonList">
             {editorInterface.formFactor !== "phone" &&
               renderAction("duplicateSelection")}
+            {editorInterface.formFactor !== "phone" &&
+              renderAction("toggleElementLock")}
             {editorInterface.formFactor !== "phone" &&
               renderAction("deleteSelectedElements")}
             {renderAction("group")}
@@ -614,6 +725,7 @@ const CombinedExtraActions = ({
   app,
   showDuplicate,
   showDelete,
+  showLockInOverflow,
 }: {
   appState: UIAppState;
   targetElements: ExcalidrawElement[];
@@ -623,6 +735,7 @@ const CombinedExtraActions = ({
   app: AppClassProperties;
   showDuplicate?: boolean;
   showDelete?: boolean;
+  showLockInOverflow?: boolean;
 }) => {
   const isEditingTextOrNewElement = Boolean(
     appState.editingTextElement || appState.newElement,
@@ -742,6 +855,7 @@ const CombinedExtraActions = ({
               <fieldset>
                 <legend>{t("labels.actions")}</legend>
                 <div className="buttonList">
+                  {showLockInOverflow && renderAction("toggleElementLock")}
                   {renderAction("group")}
                   {renderAction("ungroup")}
                   {showLinkIcon && renderAction("hyperlink")}
@@ -867,18 +981,19 @@ export const CompactShapeActions = ({
         </>
       )}
 
-      {/* Dedicated Copy Button */}
+      {/* Dedicated Copy / Lock / Delete (Canva-style quick actions) */}
       {!isEditingTextOrNewElement && targetElements.length > 0 && (
-        <div className="compact-action-item">
-          {renderAction("duplicateSelection")}
-        </div>
-      )}
-
-      {/* Dedicated Delete Button */}
-      {!isEditingTextOrNewElement && targetElements.length > 0 && (
-        <div className="compact-action-item">
-          {renderAction("deleteSelectedElements")}
-        </div>
+        <>
+          <div className="compact-action-item">
+            {renderAction("duplicateSelection")}
+          </div>
+          <div className="compact-action-item">
+            {renderAction("toggleElementLock")}
+          </div>
+          <div className="compact-action-item">
+            {renderAction("deleteSelectedElements")}
+          </div>
+        </>
       )}
 
       <CombinedExtraActions
@@ -926,6 +1041,34 @@ export const MobileShapeActions = ({
   const showDeleteOutside = ACTIONS_WIDTH >= MIN_WIDTH + ADDITIONAL_WIDTH;
   const showDuplicateOutside =
     ACTIONS_WIDTH >= MIN_WIDTH + 2 * ADDITIONAL_WIDTH;
+  const showLockOutside = showDuplicateOutside;
+
+  if (appState.activeTool.type === "eraser") {
+    return (
+      <Island
+        className="compact-shape-actions mobile-shape-actions"
+        style={{
+          flexDirection: "row",
+          boxShadow: "none",
+          padding: 0,
+          zIndex: 2,
+          backgroundColor: "transparent",
+          height: WIDTH * 1.35,
+          marginBottom: 4,
+          alignItems: "center",
+          gap: GAP,
+          pointerEvents: "none",
+        }}
+        ref={mobileActionsRef}
+      >
+        <EraserToolMobilePopover
+          appState={appState}
+          setAppState={setAppState}
+          container={container}
+        />
+      </Island>
+    );
+  }
 
   return (
     <Island
@@ -1012,6 +1155,7 @@ export const MobileShapeActions = ({
           app={app}
           showDuplicate={!showDuplicateOutside}
           showDelete={!showDeleteOutside}
+          showLockInOverflow={!showLockOutside}
         />
       </div>
       <div
@@ -1023,6 +1167,11 @@ export const MobileShapeActions = ({
       >
         <div className="compact-action-item">{renderAction("undo")}</div>
         <div className="compact-action-item">{renderAction("redo")}</div>
+        {showLockOutside && (
+          <div className="compact-action-item">
+            {renderAction("toggleElementLock")}
+          </div>
+        )}
         {showDuplicateOutside && (
           <div className="compact-action-item">
             {renderAction("duplicateSelection")}
@@ -1179,6 +1328,25 @@ export const ShapesSwitcher = ({
             />
           );
         },
+      )}
+      {UIOptions.tools?.image !== false && (
+        <ToolButton
+          key="toolbar-pdf"
+          type="button"
+          className="Shape"
+          icon={PdfImportIcon}
+          title={`${capitalizeString(t("toolBar.pdf"))} — ${getShortcutKey(
+            "Shift+9",
+          )}`}
+          aria-label={capitalizeString(t("toolBar.pdf"))}
+          aria-keyshortcuts={getShortcutKey("Shift+9")}
+          data-testid="toolbar-pdf"
+          keyBindingLabel="⇧9"
+          onClick={() => {
+            trackEvent("toolbar", "pdf", "ui");
+            app.onPdfToolbarButtonClick();
+          }}
+        />
       )}
       <div className="App-toolbar__divider" />
 

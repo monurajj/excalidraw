@@ -51,6 +51,7 @@ import {
   brainIconThin,
   LibraryIcon,
   historyCommandIcon,
+  PdfImportIcon,
 } from "../icons";
 
 import { SHAPES } from "../shapes";
@@ -553,6 +554,21 @@ function CommandPaletteInner({
 
           return acc;
         }, []),
+        ...(appProps.UIOptions.tools?.image !== false
+          ? [
+              {
+                label: t("toolBar.pdf"),
+                category: DEFAULT_CATEGORIES.tools,
+                shortcut: getShortcutKey("Shift+9"),
+                icon: PdfImportIcon,
+                keywords: ["pdf", "import", "document", "toolbar"],
+                viewMode: false,
+                perform: () => {
+                  void app.onPdfToolbarButtonClick();
+                },
+              } as CommandPaletteItem,
+            ]
+          : []),
         ...toolCommands,
         {
           label: t("toolBar.lock"),

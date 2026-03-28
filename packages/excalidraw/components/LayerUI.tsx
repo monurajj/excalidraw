@@ -31,6 +31,7 @@ import {
   SelectedShapeActions,
   ShapesSwitcher,
   CompactShapeActions,
+  EraserToolOptions,
 } from "./Actions";
 import { LoadingMessage } from "./LoadingMessage";
 import { LockButton } from "./LockButton";
@@ -117,10 +118,6 @@ const DefaultMainMenu: React.FC<{
       <MainMenu.DefaultItems.SearchMenu />
       <MainMenu.DefaultItems.Help />
       <MainMenu.DefaultItems.ClearCanvas />
-      <MainMenu.Separator />
-      <MainMenu.Group title="Excalidraw links">
-        <MainMenu.DefaultItems.Socials />
-      </MainMenu.Group>
       <MainMenu.Separator />
       <MainMenu.DefaultItems.ToggleTheme />
       <MainMenu.DefaultItems.ChangeCanvasBackground />
@@ -244,7 +241,21 @@ const LayerUI = ({
           "transition-left": appState.zenModeEnabled,
         })}
       >
-        {isCompactMode ? (
+        {appState.activeTool.type === "eraser" ? (
+          <Island
+            className={
+              isCompactMode
+                ? clsx("compact-shape-actions-island")
+                : CLASSES.SHAPE_ACTIONS_MENU
+            }
+            padding={isCompactMode ? 0 : 2}
+            style={{
+              maxHeight: `${appState.height - 166}px`,
+            }}
+          >
+            <EraserToolOptions appState={appState} setAppState={setAppState} />
+          </Island>
+        ) : isCompactMode ? (
           <Island
             className={clsx("compact-shape-actions-island")}
             padding={0}
