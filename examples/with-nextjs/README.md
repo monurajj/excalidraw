@@ -1,3 +1,8 @@
+> **Not the production app.** This folder is an **integration demo** for embedding Excalidraw in Next.js (extra buttons, “App Router” title, etc.).  
+> **Production / CM whiteboard** is built from the **repository root** with `yarn build` → output in `excalidraw-app/build`. On Vercel, set **Root Directory** to the monorepo root, **not** `examples/with-nextjs`. See root **`VERCEL.md`**.
+
+---
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
