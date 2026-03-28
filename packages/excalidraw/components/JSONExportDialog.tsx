@@ -36,6 +36,7 @@ const JSONExportModal = ({
   exportOpts,
   canvas,
   onCloseRequest,
+  watermarkImageSrc,
 }: {
   appState: UIAppState;
   setAppState: React.Component<any, UIAppState>["setState"];
@@ -45,6 +46,7 @@ const JSONExportModal = ({
   onCloseRequest: () => void;
   exportOpts: ExportOpts;
   canvas: HTMLCanvasElement;
+  watermarkImageSrc?: string;
 }) => {
   const { onExportToBackend } = exportOpts;
   return (
@@ -98,6 +100,13 @@ const JSONExportModal = ({
                       exportBackground: appState.exportBackground,
                       viewBackgroundColor: appState.viewBackgroundColor,
                       exportingFrame,
+                      watermark:
+                        watermarkImageSrc && appState.brandingWatermarkEnabled
+                          ? {
+                              imageSrc: watermarkImageSrc,
+                              enabled: true,
+                            }
+                          : undefined,
                     },
                   );
                   setAppState({ openDialog: null });
@@ -150,6 +159,7 @@ export const JSONExportDialog = ({
   exportOpts,
   canvas,
   setAppState,
+  watermarkImageSrc,
 }: {
   elements: readonly NonDeletedExcalidrawElement[];
   appState: UIAppState;
@@ -158,6 +168,7 @@ export const JSONExportDialog = ({
   exportOpts: ExportOpts;
   canvas: HTMLCanvasElement;
   setAppState: React.Component<any, UIAppState>["setState"];
+  watermarkImageSrc?: string;
 }) => {
   const handleClose = React.useCallback(() => {
     setAppState({ openDialog: null });
@@ -176,6 +187,7 @@ export const JSONExportDialog = ({
             onCloseRequest={handleClose}
             exportOpts={exportOpts}
             canvas={canvas}
+            watermarkImageSrc={watermarkImageSrc}
           />
         </Dialog>
       )}

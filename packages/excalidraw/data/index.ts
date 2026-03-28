@@ -28,6 +28,7 @@ import {
 import { t } from "../i18n";
 import { getSelectedElements, isSomeElementSelected } from "../scene";
 import { exportToCanvas, exportToSvg } from "../scene/export";
+import { drawBrandingWatermarkOnCanvas } from "./watermarkCanvas";
 
 import { canvasToBlob } from "./blob";
 import { fileSave } from "./filesystem";
@@ -108,6 +109,7 @@ export const exportCanvas = async (
     name = appState.name || DEFAULT_FILENAME,
     fileHandle = null,
     exportingFrame = null,
+    watermark,
   }: {
     exportBackground: boolean;
     exportPadding?: number;
@@ -116,6 +118,7 @@ export const exportCanvas = async (
     name?: string;
     fileHandle?: FileSystemFileHandle | null;
     exportingFrame: ExcalidrawFrameLikeElement | null;
+    watermark?: { imageSrc: string; enabled: boolean };
   },
 ) => {
   if (elements.length === 0) {
@@ -171,8 +174,16 @@ export const exportCanvas = async (
     exportingFrame,
   });
 
+  const rasterCanvasWithWatermark = async () => {
+    const canvas = await tempCanvas;
+    if (watermark?.enabled && watermark.imageSrc) {
+      await drawBrandingWatermarkOnCanvas(canvas, watermark.imageSrc);
+    }
+    return canvas;
+  };
+
   if (type === "png") {
-    let blob = canvasToBlob(tempCanvas);
+    let blob = canvasToBlob(rasterCanvasWithWatermark());
 
     if (appState.exportEmbedScene) {
       blob = blob.then((blob) =>
@@ -194,7 +205,10 @@ export const exportCanvas = async (
     });
   } else if (type === "pdf") {
     const sourceCanvas = await tempCanvas;
-    const canvas = scaleCanvasForPdfExport(sourceCanvas);
+    let canvas = scaleCanvasForPdfExport(sourceCanvas);
+    if (watermark?.enabled && watermark.imageSrc) {
+      await drawBrandingWatermarkOnCanvas(canvas, watermark.imageSrc);
+    }
     const { jsPDF } = await import("jspdf");
     const w = canvas.width;
     const h = canvas.height;
@@ -225,7 +239,7 @@ export const exportCanvas = async (
     }
   } else if (type === "clipboard") {
     try {
-      const blob = canvasToBlob(tempCanvas);
+      const blob = canvasToBlob(rasterCanvasWithWatermark());
       await copyBlobToClipboardAsPng(blob);
     } catch (error: any) {
       console.warn(error);

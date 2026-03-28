@@ -349,6 +349,8 @@ export interface AppState {
   exportEmbedScene: boolean;
   exportWithDarkMode: boolean;
   exportScale: number;
+  /** When true, show Codemasti / host branding watermark on canvas and raster exports. */
+  brandingWatermarkEnabled: boolean;
   currentItemStrokeColor: string;
   currentItemBackgroundColor: string;
   currentItemFillStyle: ExcalidrawElement["fillStyle"];
@@ -675,6 +677,11 @@ export interface ExcalidrawProps {
   aiEnabled?: boolean;
   showDeprecatedFonts?: boolean;
   renderScrollbars?: boolean;
+  /**
+   * Optional URL (same-origin path or absolute) for a branding watermark image.
+   * When set, a top-bar toggle controls visibility on the canvas and on PNG/PDF/clipboard raster exports.
+   */
+  watermarkImageSrc?: string;
   /**
    * Called before exporting to a file.
    *

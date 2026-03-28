@@ -115,6 +115,7 @@ const DefaultMainMenu: React.FC<{
       {UIOptions.canvasActions.saveAsImage && (
         <MainMenu.DefaultItems.SaveAsImage />
       )}
+      <MainMenu.DefaultItems.BrandingWatermarkToggle />
       <MainMenu.DefaultItems.SearchMenu />
       <MainMenu.DefaultItems.Help />
       <MainMenu.DefaultItems.ClearCanvas />
@@ -197,6 +198,7 @@ const LayerUI = ({
         exportOpts={UIOptions.canvasActions.export}
         canvas={canvas}
         setAppState={setAppState}
+        watermarkImageSrc={app.props.watermarkImageSrc}
       />
     );
   };

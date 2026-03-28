@@ -381,6 +381,32 @@ export const LiveCollaborationTrigger = ({
 
 LiveCollaborationTrigger.displayName = "LiveCollaborationTrigger";
 
+export const BrandingWatermarkToggle = () => {
+  const { t } = useI18n();
+  const appProps = useAppProps();
+  const appState = useUIAppState();
+  const setAppState = useExcalidrawSetAppState();
+
+  if (!appProps.watermarkImageSrc) {
+    return null;
+  }
+
+  return (
+    <DropdownMenuItemCheckbox
+      checked={appState.brandingWatermarkEnabled}
+      onSelect={(event) => {
+        setAppState({
+          brandingWatermarkEnabled: !appState.brandingWatermarkEnabled,
+        });
+        event.preventDefault();
+      }}
+    >
+      {t("labels.brandingWatermark")}
+    </DropdownMenuItemCheckbox>
+  );
+};
+BrandingWatermarkToggle.displayName = "BrandingWatermarkToggle";
+
 const PreferencesToggleToolLockItem = () => {
   const { t } = useI18n();
   const app = useApp();
