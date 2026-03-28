@@ -377,6 +377,8 @@ const ExcalidrawWrapper = () => {
       resolvablePromise<ExcalidrawInitialDataState | null>();
   }
 
+  const initialSceneResolvedRef = useRef(false);
+
   const debugCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -504,11 +506,24 @@ const ExcalidrawWrapper = () => {
   );
 
   useEffect(() => {
-    if (!excalidrawAPI || (!isCollabDisabled && !collabAPI)) {
+    if (!excalidrawAPI) {
+      return;
+    }
+    // Collab registers collabAPI in componentDidMount (after first paint).
+    // `initializeScene` only needs collabAPI for `#room=` links (startCollaboration).
+    // Waiting for collabAPI on every load races the effect and can leave
+    // `initialData` unresolved → isLoading stuck forever with "Loading scene…".
+    const needsCollabApi =
+      !isCollabDisabled && isCollaborationLink(window.location.href);
+    if (needsCollabApi && !collabAPI) {
       return;
     }
 
     initializeScene({ collabAPI, excalidrawAPI }).then(async (data) => {
+      if (initialSceneResolvedRef.current) {
+        return;
+      }
+      initialSceneResolvedRef.current = true;
       loadImages(data, /* isInitialLoad */ true);
       initialStatePromiseRef.current.promise.resolve(data.scene);
     });
@@ -532,7 +547,15 @@ const ExcalidrawWrapper = () => {
               elements: restoreElements(data.scene.elements, null, {
                 repairBindings: true,
               }),
-              appState: restoreAppState(data.scene.appState, null),
+              appState: {
+                ...restoreAppState(data.scene.appState, null),
+                isLoading: false,
+              },
+              captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+            });
+          } else {
+            excalidrawAPI.updateScene({
+              appState: { isLoading: false },
               captureUpdate: CaptureUpdateAction.IMMEDIATELY,
             });
           }
