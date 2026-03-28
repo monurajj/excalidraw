@@ -474,6 +474,11 @@ export const normalizeFile = async (file: File) => {
     file = createFile(file, MIME_TYPES.excalidrawlib, file.name);
   } else if (file?.name?.endsWith(".excalidraw")) {
     file = createFile(file, MIME_TYPES.excalidraw, file.name);
+  } else if (
+    file?.name?.toLowerCase().endsWith(".pdf") &&
+    (!file.type || file.type === MIME_TYPES.binary)
+  ) {
+    file = createFile(file, MIME_TYPES.pdf, file.name);
   } else if (!file.type || file.type?.startsWith("image/")) {
     // when the file is an image, make sure the extension corresponds to the
     // actual mimeType (this is an edge case, but happens - especially

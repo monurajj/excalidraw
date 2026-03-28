@@ -38,7 +38,7 @@ export class AnimatedTrail implements Trail {
   constructor(
     private animationFrameHandler: AnimationFrameHandler,
     protected app: App,
-    private options: Partial<LaserPointerOptions> &
+    protected options: Partial<LaserPointerOptions> &
       Partial<AnimatedTrailOptions>,
   ) {
     this.animationFrameHandler.register(this, this.onFrame.bind(this));
@@ -93,8 +93,12 @@ export class AnimatedTrail implements Trail {
     }
   }
 
+  protected createLaserPointer(): LaserPointer {
+    return new LaserPointer(this.options);
+  }
+
   startPath(x: number, y: number) {
-    this.currentTrail = new LaserPointer(this.options);
+    this.currentTrail = this.createLaserPointer();
 
     this.currentTrail.addPoint([x, y, performance.now()]);
 

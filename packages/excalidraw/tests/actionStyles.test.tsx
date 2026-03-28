@@ -1,6 +1,6 @@
 import React from "react";
 
-import { CODES } from "@excalidraw/common";
+import { CODES, strokeWidthToSliderPercent } from "@excalidraw/common";
 
 import { copiedStyles } from "../actions/actionStyles";
 import { Excalidraw } from "../index";
@@ -45,8 +45,9 @@ describe("actionStyles", () => {
     UI.clickOnTestId("color-blue");
     // Fill style
     fireEvent.click(screen.getByTitle("Cross-hatch"));
-    // Stroke width
-    fireEvent.click(screen.getByTitle("Bold"));
+    fireEvent.change(screen.getByTestId("strokeWidth"), {
+      target: { value: String(strokeWidthToSliderPercent(2)) },
+    });
     // Stroke style
     fireEvent.click(screen.getByTitle("Dotted"));
     // Roughness

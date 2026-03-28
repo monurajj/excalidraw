@@ -12,8 +12,9 @@ import {
   DEFAULT_FONT_SIZE,
   FONT_FAMILY,
   ROUNDNESS,
-  STROKE_WIDTH,
   VERTICAL_ALIGN,
+  sliderPercentToStrokeWidth,
+  strokeWidthToSliderPercent,
   KEYS,
   randomInteger,
   arrayToMap,
@@ -105,8 +106,6 @@ import {
   SloppinessArtistIcon,
   SloppinessCartoonistIcon,
   StrokeWidthBaseIcon,
-  StrokeWidthBoldIcon,
-  StrokeWidthExtraBoldIcon,
   FontSizeSmallIcon,
   FontSizeMediumIcon,
   FontSizeLargeIcon,
@@ -561,45 +560,38 @@ export const actionChangeStrokeWidth = register<
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => (
-    <fieldset>
-      <legend>{t("labels.strokeWidth")}</legend>
-      <div className="buttonList">
-        <RadioSelection
-          group="stroke-width"
-          options={[
-            {
-              value: STROKE_WIDTH.thin,
-              text: t("labels.thin"),
-              icon: StrokeWidthBaseIcon,
-              testId: "strokeWidth-thin",
-            },
-            {
-              value: STROKE_WIDTH.bold,
-              text: t("labels.bold"),
-              icon: StrokeWidthBoldIcon,
-              testId: "strokeWidth-bold",
-            },
-            {
-              value: STROKE_WIDTH.extraBold,
-              text: t("labels.extraBold"),
-              icon: StrokeWidthExtraBoldIcon,
-              testId: "strokeWidth-extraBold",
-            },
-          ]}
-          value={getFormValue(
-            elements,
-            app,
-            (element) => element.strokeWidth,
-            (element) => element.hasOwnProperty("strokeWidth"),
-            (hasSelection) =>
-              hasSelection ? null : appState.currentItemStrokeWidth,
-          )}
-          onChange={(value) => updateData(value)}
+  PanelComponent: ({ elements, appState, updateData, app, data }) => {
+    const strokeWidth = getFormValue(
+      elements,
+      app,
+      (element) => element.strokeWidth,
+      (element) => element.hasOwnProperty("strokeWidth"),
+      (hasSelection) =>
+        hasSelection ? null : appState.currentItemStrokeWidth,
+    );
+
+    const percent =
+      strokeWidth !== null
+        ? strokeWidthToSliderPercent(strokeWidth)
+        : strokeWidthToSliderPercent(appState.currentItemStrokeWidth);
+
+    return (
+      <fieldset>
+        <legend>{t("labels.strokeWidth")}</legend>
+        <Range
+          value={percent}
+          hasCommonValue={strokeWidth !== null}
+          onChange={(p) => updateData(sliderPercentToStrokeWidth(p))}
+          min={1}
+          max={100}
+          step={1}
+          minLabel={false}
+          formatBubble={(v) => `${v}%`}
+          testId="strokeWidth"
         />
-      </div>
-    </fieldset>
-  ),
+      </fieldset>
+    );
+  },
 });
 
 export const actionChangeSloppiness = register<ExcalidrawElement["roughness"]>({

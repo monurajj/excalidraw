@@ -178,6 +178,10 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
             />
             <Shortcut label={t("toolBar.image")} shortcuts={[KEYS["9"]]} />
             <Shortcut
+              label={t("toolBar.pdf")}
+              shortcuts={[getShortcutKey("Shift+9")]}
+            />
+            <Shortcut
               label={t("toolBar.eraser")}
               shortcuts={[KEYS.E, KEYS["0"]]}
             />

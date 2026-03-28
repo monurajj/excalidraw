@@ -13,6 +13,7 @@ import { cleanAppStateForExport, clearAppStateForDatabase } from "../appState";
 
 import { isImageFileHandle, loadFromBlob } from "./blob";
 import { fileOpen, fileSave } from "./filesystem";
+import { isPdfFile } from "./pdf";
 
 import type { AppState, BinaryFiles, LibraryItems } from "../types";
 import type {
@@ -22,11 +23,21 @@ import type {
   ImportedLibraryData,
 } from "./types";
 
+type LoadedSceneData = Awaited<ReturnType<typeof loadFromBlob>>;
+
 export type JSONExportData = {
   elements: readonly NonDeleted<ExcalidrawElement>[];
   appState: AppState;
   files: BinaryFiles;
 };
+
+export type LoadFromJSONResult =
+  | ({ kind: "scene" } & LoadedSceneData)
+  | {
+      kind: "pdf";
+      file: File;
+      fileHandle: FileSystemFileHandle | null;
+    };
 
 /**
  * Strips out files which are only referenced by deleted elements
@@ -102,14 +113,27 @@ export const saveAsJSON = async ({
 export const loadFromJSON = async (
   localAppState: AppState,
   localElements: readonly ExcalidrawElement[] | null,
-) => {
+): Promise<LoadFromJSONResult> => {
   const file = await fileOpen({
     description: "Excalidraw files",
     // ToDo: Be over-permissive until https://bugs.webkit.org/show_bug.cgi?id=34442
     // gets resolved. Else, iOS users cannot open `.excalidraw` files.
     // extensions: ["json", "excalidraw", "png", "svg"],
   });
-  return loadFromBlob(file, localAppState, localElements, file.handle);
+  if (isPdfFile(file)) {
+    return {
+      kind: "pdf",
+      file,
+      fileHandle: file.handle ?? null,
+    };
+  }
+  const data = await loadFromBlob(
+    file,
+    localAppState,
+    localElements,
+    file.handle,
+  );
+  return { kind: "scene", ...data };
 };
 
 export const isValidExcalidrawData = (data?: {

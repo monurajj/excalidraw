@@ -5,6 +5,7 @@ import {
   DEFAULT_ELEMENT_BACKGROUND_PICKS,
   FONT_FAMILY,
   STROKE_WIDTH,
+  strokeWidthToSliderPercent,
 } from "@excalidraw/common";
 
 import { Excalidraw } from "../index";
@@ -121,14 +122,15 @@ describe("element locking", () => {
       API.setElements([rect1, rect2]);
       API.setSelectedElements([rect1, rect2]);
 
-      const thinStrokeWidthButton = queryByTestId(
-        document.body,
-        `strokeWidth-thin`,
+      const strokeWidthSlider = queryByTestId(document.body, "strokeWidth");
+      expect(strokeWidthSlider).toBeTruthy();
+      expect(strokeWidthSlider).toHaveValue(
+        String(strokeWidthToSliderPercent(STROKE_WIDTH.thin)),
       );
-      expect(thinStrokeWidthButton).toBeChecked();
+      expect(strokeWidthSlider).toHaveAttribute("data-has-common-value", "true");
     });
 
-    it("should not highlight any stroke width button if no common style", () => {
+    it("should indicate mixed stroke width when selection has no common width", () => {
       const rect1 = API.createElement({
         type: "rectangle",
         strokeWidth: STROKE_WIDTH.thin,
@@ -140,16 +142,12 @@ describe("element locking", () => {
       API.setElements([rect1, rect2]);
       API.setSelectedElements([rect1, rect2]);
 
-      expect(queryByTestId(document.body, `strokeWidth-thin`)).not.toBe(null);
-      expect(
-        queryByTestId(document.body, `strokeWidth-thin`),
-      ).not.toBeChecked();
-      expect(
-        queryByTestId(document.body, `strokeWidth-bold`),
-      ).not.toBeChecked();
-      expect(
-        queryByTestId(document.body, `strokeWidth-extraBold`),
-      ).not.toBeChecked();
+      const strokeWidthSlider = queryByTestId(document.body, "strokeWidth");
+      expect(strokeWidthSlider).toBeTruthy();
+      expect(strokeWidthSlider).toHaveAttribute(
+        "data-has-common-value",
+        "false",
+      );
     });
 
     it("should show properties of different element types when selected", () => {
@@ -164,7 +162,9 @@ describe("element locking", () => {
       API.setElements([rect, text]);
       API.setSelectedElements([rect, text]);
 
-      expect(queryByTestId(document.body, `strokeWidth-bold`)).toBeChecked();
+      expect(queryByTestId(document.body, "strokeWidth")).toHaveValue(
+        String(strokeWidthToSliderPercent(STROKE_WIDTH.bold)),
+      );
       expect(queryByTestId(document.body, `font-family-code`)).toHaveClass(
         "active",
       );

@@ -383,8 +383,12 @@ export interface AppState {
     | "compactStrokeStyles"
     | "compactOtherProperties"
     | "compactArrowProperties"
+    | "eraserTool"
     | null;
   openSidebar: { name: SidebarName; tab?: SidebarTabName } | null;
+  /** Eraser: delete whole elements vs carve strokes; brush size in scene pixels at 100% zoom. */
+  eraserMode: "object" | "stroke";
+  eraserBrushSize: number;
   openDialog:
     | null
     | { name: "imageExport" | "help" | "jsonExport" }
@@ -828,6 +832,8 @@ export type AppClassProperties = {
   bindModeHandler: App["bindModeHandler"];
 
   setAppState: App["setAppState"];
+  loadFileToCanvas: App["loadFileToCanvas"];
+  onPdfToolbarButtonClick: App["onPdfToolbarButtonClick"];
 };
 
 export type PointerDownState = Readonly<{

@@ -7,19 +7,20 @@ import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 import { actionSaveFileToDisk } from "../actions/actionExport";
 
 import { trackEvent } from "../analytics";
+import { exportCanvas, prepareElementsForExport } from "../data";
 import { nativeFileSystemSupported } from "../data/filesystem";
 import { t } from "../i18n";
 
 import { Card } from "./Card";
 import { Dialog } from "./Dialog";
 import { ToolButton } from "./ToolButton";
-import { exportToFileIcon, LinkIcon } from "./icons";
+import { exportToFileIcon, LinkIcon, PdfImportIcon } from "./icons";
 
 import "./ExportDialog.scss";
 
 import type { ActionManager } from "../actions/manager";
 
-import type { ExportOpts, BinaryFiles, UIAppState } from "../types";
+import type { AppState, ExportOpts, BinaryFiles, UIAppState } from "../types";
 
 export type ExportCB = (
   elements: readonly NonDeletedExcalidrawElement[],
@@ -66,6 +67,47 @@ const JSONExportModal = ({
               showAriaLabel={true}
               onClick={() => {
                 actionManager.executeAction(actionSaveFileToDisk, "ui");
+              }}
+            />
+          </Card>
+        )}
+        {(exportOpts.saveFileToDisk ||
+          onExportToBackend ||
+          exportOpts.renderCustomUI) && (
+          <Card color="indigo">
+            <div className="Card-icon">{PdfImportIcon}</div>
+            <h2>{t("exportDialog.pdf_title")}</h2>
+            <div className="Card-details">{t("exportDialog.pdf_details")}</div>
+            <ToolButton
+              className="Card-button"
+              type="button"
+              title={t("exportDialog.pdf_button")}
+              aria-label={t("exportDialog.pdf_button")}
+              showAriaLabel={true}
+              onClick={async () => {
+                try {
+                  trackEvent("export", "pdf", `ui (${getFrame()})`);
+                  const { exportedElements, exportingFrame } =
+                    prepareElementsForExport(elements, appState, false);
+                  await exportCanvas(
+                    "pdf",
+                    exportedElements,
+                    appState as AppState,
+                    files,
+                    {
+                      exportBackground: appState.exportBackground,
+                      viewBackgroundColor: appState.viewBackgroundColor,
+                      exportingFrame,
+                    },
+                  );
+                  setAppState({ openDialog: null });
+                } catch (error: any) {
+                  if (error?.name === "AbortError") {
+                    console.warn(error);
+                    return;
+                  }
+                  setAppState({ errorMessage: error.message });
+                }
               }}
             />
           </Card>

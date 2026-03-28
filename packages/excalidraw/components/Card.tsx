@@ -17,10 +17,15 @@ const COLOR_MAP = {
     darker: "#c2255c", // open-color pink[8]
     darkest: "#a61e4d", // open-color pink[9]
   },
+  indigo: {
+    base: "#4263eb", // open-color indigo[7]
+    darker: "#3b5bdb", // open-color indigo[8]
+    darkest: "#364fc7", // open-color indigo[9]
+  },
 };
 
 export const Card: React.FC<{
-  color: "primary" | "lime" | "pink";
+  color: "primary" | "lime" | "pink" | "indigo";
   children?: React.ReactNode;
 }> = ({ children, color }) => {
   return (
