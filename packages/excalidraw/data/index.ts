@@ -32,13 +32,18 @@ import { exportToCanvas, exportToSvg } from "../scene/export";
 import { canvasToBlob } from "./blob";
 import { fileSave } from "./filesystem";
 import { serializeAsJSON } from "./json";
+import { scaleCanvasForPdfExport } from "./pdf";
 
 import type { ExportType } from "../scene/types";
 import type { AppState, BinaryFiles } from "../types";
 
 export { loadFromBlob } from "./blob";
 export { loadFromJSON, saveAsJSON, type LoadFromJSONResult } from "./json";
-export { isPdfFile, pdfFileToImageFiles } from "./pdf";
+export {
+  isPdfFile,
+  pdfFileToImageFiles,
+  scaleCanvasForPdfExport,
+} from "./pdf";
 
 export type ExportedElements = readonly NonDeletedExcalidrawElement[] & {
   _brand: "exportedElements";
@@ -188,22 +193,36 @@ export const exportCanvas = async (
       fileHandle,
     });
   } else if (type === "pdf") {
-    const canvas = await tempCanvas;
+    const sourceCanvas = await tempCanvas;
+    const canvas = scaleCanvasForPdfExport(sourceCanvas);
     const { jsPDF } = await import("jspdf");
-    const imgData = canvas.toDataURL(MIME_TYPES.png);
+    const w = canvas.width;
+    const h = canvas.height;
     const pdf = new jsPDF({
-      orientation: canvas.width > canvas.height ? "landscape" : "portrait",
+      orientation: w > h ? "landscape" : "portrait",
       unit: "px",
-      format: [canvas.width, canvas.height],
+      format: [w, h],
     });
-    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-    return fileSave(Promise.resolve(pdf.output("blob")), {
-      description: "Export to PDF",
-      name,
-      extension: "pdf",
-      mimeTypes: [MIME_TYPES.pdf],
-      fileHandle,
-    });
+    try {
+      // Prefer embedding the canvas directly to avoid a giant base64 string from toDataURL.
+      pdf.addImage(canvas, "PNG", 0, 0, w, h, undefined, "FAST");
+      return fileSave(Promise.resolve(pdf.output("blob")), {
+        description: "Export to PDF",
+        name,
+        extension: "pdf",
+        mimeTypes: [MIME_TYPES.pdf],
+        fileHandle,
+      });
+    } catch (error: any) {
+      const msg = error?.message ?? "";
+      if (
+        error instanceof RangeError ||
+        /invalid string length|Maximum call stack/i.test(msg)
+      ) {
+        throw new Error(t("errors.pdfExportTooLarge"));
+      }
+      throw error;
+    }
   } else if (type === "clipboard") {
     try {
       const blob = canvasToBlob(tempCanvas);
