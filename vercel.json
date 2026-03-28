@@ -1,20 +1,16 @@
 {
-  "public": true,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "yarn install",
+  "buildCommand": "yarn build",
+  "outputDirectory": "excalidraw-app/build",
+  "framework": null,
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://excalidraw.com"
-        },
-        {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
-        },
-        {
-          "key": "Feature-Policy",
-          "value": "*"
         },
         {
           "key": "Referrer-Policy",
@@ -31,7 +27,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://excalidraw.com"
+          "value": "*"
         }
       ]
     },
@@ -64,7 +60,5 @@
       ],
       "destination": "https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor"
     }
-  ],
-  "outputDirectory": "excalidraw-app/build",
-  "installCommand": "yarn install"
+  ]
 }
