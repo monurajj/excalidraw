@@ -284,6 +284,7 @@
     "imageInsertError": "Couldn't insert image. Try again later...",
     "pdfImportError": "Couldn't import PDF. The file may be invalid or corrupted.",
     "pdfExportTooLarge": "This drawing is too large to export as PDF. Try lowering the export scale in the export dialog, zooming out, or use PNG or SVG instead.",
+    "pdfExportEmpty": "Couldn't generate a valid PDF file. Try lowering the export scale, or export as PNG or SVG instead.",
     "fileTooBig": "File is too big. Maximum allowed size is {{maxSize}}.",
     "svgImageInsertError": "Couldn't insert SVG image. The SVG markup looks invalid.",
     "failedToFetchImage": "Failed to fetch image.",

@@ -260,18 +260,26 @@ export const exportCanvas = async (
         await drawBrandingWatermarkOnCanvas(canvas, exportWatermark.imageSrc);
       }
       const { jsPDF } = await import("jspdf");
-      const w = canvas.width;
-      const h = canvas.height;
+      const wPx = Math.max(1, canvas.width);
+      const hPx = Math.max(1, canvas.height);
+      // jsPDF is most reliable with pt/mm; very large `unit: "px"` pages can yield invalid or 0-byte PDFs.
+      const CSS_PX_TO_PT = 72 / 96;
+      const wPt = wPx * CSS_PX_TO_PT;
+      const hPt = hPx * CSS_PX_TO_PT;
       const pdf = new jsPDF({
-        orientation: w > h ? "landscape" : "portrait",
-        unit: "px",
-        format: [w, h],
+        orientation: wPt > hPt ? "landscape" : "portrait",
+        unit: "pt",
+        format: [wPt, hPt],
+        hotfixes: ["px_scaling"],
       });
       try {
-        // Prefer embedding the canvas directly to avoid a giant base64 string from toDataURL.
         // SLOW = lossless PNG predictors + stronger zlib (FAST used weaker filters and looked soft).
-        pdf.addImage(canvas, "PNG", 0, 0, w, h, undefined, "SLOW");
-        return pdf.output("blob");
+        pdf.addImage(canvas, "PNG", 0, 0, wPt, hPt, undefined, "SLOW");
+        const ab = pdf.output("arraybuffer");
+        if (ab.byteLength === 0) {
+          throw new Error(t("errors.pdfExportEmpty"));
+        }
+        return new Blob([ab], { type: MIME_TYPES.pdf });
       } catch (error: any) {
         const msg = error?.message ?? "";
         if (

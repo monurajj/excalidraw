@@ -169,6 +169,15 @@ const prepareElementsForRender = ({
   return nextElements;
 };
 
+/**
+ * Browsers cap canvas backing-store size (commonly ~16k per side). Requesting
+ * larger dimensions often yields width/height 0 or a blank bitmap — exports
+ * then look like empty files. Clamp the effective export scale so the raster
+ * fits (PDF high scale + large frames/image elements can exceed limits).
+ */
+const MAX_EXPORT_CANVAS_DIMENSION_PX = 16384;
+const MAX_EXPORT_CANVAS_AREA_PX = 200_000_000;
+
 export const exportToCanvas = async (
   elements: readonly NonDeletedExcalidrawElement[],
   appState: AppState,
@@ -189,9 +198,19 @@ export const exportToCanvas = async (
     height: number,
   ) => { canvas: HTMLCanvasElement; scale: number } = (width, height) => {
     const canvas = document.createElement("canvas");
-    canvas.width = width * appState.exportScale;
-    canvas.height = height * appState.exportScale;
-    return { canvas, scale: appState.exportScale };
+    let scale = appState.exportScale;
+    if (width > 0 && height > 0) {
+      scale = Math.min(
+        scale,
+        MAX_EXPORT_CANVAS_DIMENSION_PX / width,
+        MAX_EXPORT_CANVAS_DIMENSION_PX / height,
+        Math.sqrt(MAX_EXPORT_CANVAS_AREA_PX / (width * height)),
+      );
+    }
+    scale = Math.max(scale, 0.25);
+    canvas.width = Math.max(1, Math.floor(width * scale));
+    canvas.height = Math.max(1, Math.floor(height * scale));
+    return { canvas, scale };
   },
   loadFonts: () => Promise<void> = async () => {
     await Fonts.loadElementsFonts(elements);
