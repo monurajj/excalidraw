@@ -336,7 +336,8 @@ export const DEFAULT_UI_OPTIONS: AppProps["UIOptions"] = {
 
 export const MAX_DECIMALS_FOR_SVG_EXPORT = 2;
 
-export const EXPORT_SCALES = [1, 2, 3];
+/** Includes 4–5 for sharper PNG/PDF raster exports on large canvases. */
+export const EXPORT_SCALES = [1, 2, 3, 4, 5];
 export const DEFAULT_EXPORT_PADDING = 10; // px
 
 export const DEFAULT_MAX_IMAGE_WIDTH_OR_HEIGHT = 1440;

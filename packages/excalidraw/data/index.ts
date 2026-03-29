@@ -33,7 +33,11 @@ import { drawBrandingWatermarkOnCanvas } from "./watermarkCanvas";
 import { canvasToBlob } from "./blob";
 import { fileSave } from "./filesystem";
 import { serializeAsJSON } from "./json";
-import { scaleCanvasForPdfExport } from "./pdf";
+import {
+  PDF_RASTER_SCALE_MAX,
+  PDF_RASTER_SCALE_MIN,
+  scaleCanvasForPdfExport,
+} from "./pdf";
 
 import type { ExportType } from "../scene/types";
 import type { AppState, BinaryFiles } from "../types";
@@ -57,6 +61,8 @@ export { loadFromBlob } from "./blob";
 export { loadFromJSON, saveAsJSON, type LoadFromJSONResult } from "./json";
 export {
   isPdfFile,
+  PDF_RASTER_SCALE_MAX,
+  PDF_RASTER_SCALE_MIN,
   pdfFileToImageFiles,
   scaleCanvasForPdfExport,
 } from "./pdf";
@@ -191,14 +197,17 @@ export const exportCanvas = async (
     }
   }
 
-  /** PDF is rasterized; keep at least 2× and up to 4× for sharper text than PNG/clipboard. */
+  /**
+   * PDF is rasterized. The image-export scale slider only goes up to 5×; we still
+   * clamp PDF to PDF_RASTER_SCALE_MIN–MAX so downloads stay sharp (print-like DPI).
+   */
   const appStateForCanvas =
     type === "pdf"
       ? {
           ...appState,
           exportScale: Math.min(
-            4,
-            Math.max(appState.exportScale, 2),
+            PDF_RASTER_SCALE_MAX,
+            Math.max(appState.exportScale, PDF_RASTER_SCALE_MIN),
           ),
         }
       : appState;
