@@ -1,0 +1,24 @@
+.excalidraw {
+  .BrandingWatermarkOverlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    overflow: hidden;
+
+    &__img {
+      position: absolute;
+      right: 1.5rem;
+      bottom: 5rem;
+      max-width: min(200px, 22vw);
+      height: auto;
+      opacity: 0.4;
+      filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.12));
+    }
+
+    &--dark .BrandingWatermarkOverlay__img {
+      opacity: 0.35;
+      filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.45));
+    }
+  }
+}

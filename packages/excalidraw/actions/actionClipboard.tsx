@@ -216,6 +216,14 @@ export const actionCopyAsPng = register({
         ...appState,
         exportingFrame,
         name: app.getName(),
+        watermark:
+          app.props.watermarkImageSrc && appState.brandingWatermarkEnabled
+            ? {
+                imageSrc: app.props.watermarkImageSrc,
+                enabled: true,
+              }
+            : undefined,
+        hostBrandingImageSrc: app.props.watermarkImageSrc,
       });
       return {
         appState: {

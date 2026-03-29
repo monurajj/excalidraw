@@ -876,6 +876,7 @@ const ExcalidrawWrapper = () => {
       })}
     >
       <Excalidraw
+        watermarkImageSrc="/codemastilogo.png"
         onChange={onChange}
         onExport={onExport}
         initialData={initialStatePromiseRef.current.promise}

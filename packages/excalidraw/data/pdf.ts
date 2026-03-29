@@ -7,6 +7,52 @@ const PDFJS_DIST_VERSION = "4.10.38";
 const MAX_PAGE_DIMENSION_PX = 4096;
 const DEFAULT_RENDER_SCALE = 2;
 
+/**
+ * Raster PDF export uses PNG + jsPDF strings; very large canvases exceed JS max
+ * string length (`Array.join` / `toDataURL`). Downscale before embedding.
+ * Limits are tuned for sharper text while still avoiding typical browser/JS limits.
+ */
+export const MAX_PDF_EXPORT_DIMENSION_PX = 8192;
+export const MAX_PDF_EXPORT_PIXELS = 72_000_000;
+
+export const scaleCanvasForPdfExport = (
+  canvas: HTMLCanvasElement,
+): HTMLCanvasElement => {
+  let w = canvas.width;
+  let h = canvas.height;
+  if (w <= 0 || h <= 0) {
+    return canvas;
+  }
+
+  const pixels = w * h;
+  let scale = 1;
+  const maxDim = Math.max(w, h);
+  if (maxDim > MAX_PDF_EXPORT_DIMENSION_PX) {
+    scale = Math.min(scale, MAX_PDF_EXPORT_DIMENSION_PX / maxDim);
+  }
+  if (pixels * scale * scale > MAX_PDF_EXPORT_PIXELS) {
+    scale = Math.min(scale, Math.sqrt(MAX_PDF_EXPORT_PIXELS / pixels));
+  }
+
+  if (scale >= 0.999) {
+    return canvas;
+  }
+
+  const nw = Math.max(1, Math.floor(w * scale));
+  const nh = Math.max(1, Math.floor(h * scale));
+  const out = document.createElement("canvas");
+  out.width = nw;
+  out.height = nh;
+  const ctx = out.getContext("2d");
+  if (!ctx) {
+    throw new Error("Could not create canvas for PDF export");
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(canvas, 0, 0, nw, nh);
+  return out;
+};
+
 export const isPdfFile = (blob: Blob | File | null | undefined): boolean => {
   if (!blob) {
     return false;

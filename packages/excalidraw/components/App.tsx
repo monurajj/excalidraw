@@ -445,6 +445,7 @@ import ConvertElementTypePopup, {
 
 import { activeConfirmDialogAtom } from "./ActiveConfirmDialog";
 import BraveMeasureTextError from "./BraveMeasureTextError";
+import { BrandingWatermarkOverlay } from "./BrandingWatermarkOverlay";
 import { ContextMenu, CONTEXT_MENU_SEPARATOR } from "./ContextMenu";
 import { activeEyeDropperAtom } from "./EyeDropper";
 import FollowMode from "./FollowMode/FollowMode";
@@ -2118,6 +2119,7 @@ class App extends React.Component<AppProps, AppState> {
           "excalidraw--mobile": this.editorInterface.formFactor === "phone",
         })}
         style={{
+          position: "relative",
           ["--ui-pointerEvents" as any]: shouldBlockPointerEvents
             ? POINTER_EVENTS.disabled
             : POINTER_EVENTS.enabled,
@@ -2378,6 +2380,13 @@ class App extends React.Component<AppProps, AppState> {
                             onPointerDown={this.handleCanvasPointerDown}
                             onDoubleClick={this.handleCanvasDoubleClick}
                           />
+                          {this.props.watermarkImageSrc &&
+                            this.state.brandingWatermarkEnabled && (
+                              <BrandingWatermarkOverlay
+                                imageSrc={this.props.watermarkImageSrc}
+                                theme={this.state.theme}
+                              />
+                            )}
                           {this.state.userToFollow && (
                             <FollowMode
                               width={this.state.width}
@@ -2450,6 +2459,15 @@ class App extends React.Component<AppProps, AppState> {
         name: this.getName(),
         viewBackgroundColor: this.state.viewBackgroundColor,
         exportingFrame: opts.exportingFrame,
+        watermark:
+          this.props.watermarkImageSrc &&
+          this.state.brandingWatermarkEnabled
+            ? {
+                imageSrc: this.props.watermarkImageSrc,
+                enabled: true,
+              }
+            : undefined,
+        hostBrandingImageSrc: this.props.watermarkImageSrc,
       },
     )
       .catch(muteFSAbortError)

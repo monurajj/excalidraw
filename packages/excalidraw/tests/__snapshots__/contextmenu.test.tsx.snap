@@ -13,6 +13,7 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": {
     "items": [
@@ -1089,6 +1090,7 @@ exports[`contextMenu element > selecting 'Add to library' in context menu adds e
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -1305,6 +1307,7 @@ exports[`contextMenu element > selecting 'Bring forward' in context menu brings 
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -1638,6 +1641,7 @@ exports[`contextMenu element > selecting 'Bring to front' in context menu brings
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -1971,6 +1975,7 @@ exports[`contextMenu element > selecting 'Copy styles' in context menu copies st
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -2187,6 +2192,7 @@ exports[`contextMenu element > selecting 'Delete' in context menu deletes elemen
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -2430,6 +2436,7 @@ exports[`contextMenu element > selecting 'Duplicate' in context menu duplicates 
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -2730,6 +2737,7 @@ exports[`contextMenu element > selecting 'Group selection' in context menu group
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -3104,6 +3112,7 @@ exports[`contextMenu element > selecting 'Paste styles' in context menu pastes s
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -3599,6 +3608,7 @@ exports[`contextMenu element > selecting 'Send backward' in context menu sends e
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -3924,6 +3934,7 @@ exports[`contextMenu element > selecting 'Send to back' in context menu sends el
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -4249,6 +4260,7 @@ exports[`contextMenu element > selecting 'Ungroup selection' in context menu ung
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": null,
   "croppingElementId": null,
@@ -4662,6 +4674,7 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": {
     "items": [
@@ -5882,6 +5895,7 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": {
     "items": [
@@ -7153,6 +7167,7 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": {
     "items": [
@@ -7844,6 +7859,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": {
     "items": [
@@ -8838,6 +8854,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   },
   "bindMode": "orbit",
   "bindingPreference": "enabled",
+  "brandingWatermarkEnabled": true,
   "collaborators": Map {},
   "contextMenu": {
     "items": [
