@@ -2467,6 +2467,7 @@ class App extends React.Component<AppProps, AppState> {
                 enabled: true,
               }
             : undefined,
+        hostBrandingImageSrc: this.props.watermarkImageSrc,
       },
     )
       .catch(muteFSAbortError)

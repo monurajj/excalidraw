@@ -107,6 +107,7 @@ const JSONExportModal = ({
                               enabled: true,
                             }
                           : undefined,
+                      hostBrandingImageSrc: watermarkImageSrc,
                     },
                   );
                   setAppState({ openDialog: null });

@@ -223,6 +223,7 @@ export const actionCopyAsPng = register({
                 enabled: true,
               }
             : undefined,
+        hostBrandingImageSrc: app.props.watermarkImageSrc,
       });
       return {
         appState: {

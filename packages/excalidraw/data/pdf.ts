@@ -10,9 +10,10 @@ const DEFAULT_RENDER_SCALE = 2;
 /**
  * Raster PDF export uses PNG + jsPDF strings; very large canvases exceed JS max
  * string length (`Array.join` / `toDataURL`). Downscale before embedding.
+ * Limits are tuned for sharper text while still avoiding typical browser/JS limits.
  */
-export const MAX_PDF_EXPORT_DIMENSION_PX = 4096;
-export const MAX_PDF_EXPORT_PIXELS = 22_000_000;
+export const MAX_PDF_EXPORT_DIMENSION_PX = 8192;
+export const MAX_PDF_EXPORT_PIXELS = 72_000_000;
 
 export const scaleCanvasForPdfExport = (
   canvas: HTMLCanvasElement,

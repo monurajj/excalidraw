@@ -38,6 +38,21 @@ import { scaleCanvasForPdfExport } from "./pdf";
 import type { ExportType } from "../scene/types";
 import type { AppState, BinaryFiles } from "../types";
 
+/** Host image URL + app toggle; merges with explicit `watermark` from callers. */
+const resolveExportWatermark = (
+  appState: AppState,
+  watermark: { imageSrc: string; enabled: boolean } | undefined,
+  hostBrandingImageSrc: string | null | undefined,
+): { imageSrc: string; enabled: true } | undefined => {
+  if (watermark?.enabled && watermark.imageSrc) {
+    return { imageSrc: watermark.imageSrc, enabled: true };
+  }
+  if (hostBrandingImageSrc && appState.brandingWatermarkEnabled) {
+    return { imageSrc: hostBrandingImageSrc, enabled: true };
+  }
+  return undefined;
+};
+
 export { loadFromBlob } from "./blob";
 export { loadFromJSON, saveAsJSON, type LoadFromJSONResult } from "./json";
 export {
@@ -110,6 +125,7 @@ export const exportCanvas = async (
     fileHandle = null,
     exportingFrame = null,
     watermark,
+    hostBrandingImageSrc,
   }: {
     exportBackground: boolean;
     exportPadding?: number;
@@ -119,11 +135,19 @@ export const exportCanvas = async (
     fileHandle?: FileSystemFileHandle | null;
     exportingFrame: ExcalidrawFrameLikeElement | null;
     watermark?: { imageSrc: string; enabled: boolean };
+    /** Same as Excalidraw `watermarkImageSrc`; used if `watermark` is omitted. */
+    hostBrandingImageSrc?: string | null;
   },
 ) => {
   if (elements.length === 0) {
     throw new Error(t("alerts.cannotExportEmptyCanvas"));
   }
+
+  const exportWatermark = resolveExportWatermark(
+    appState,
+    watermark,
+    hostBrandingImageSrc,
+  );
   if (type === "svg" || type === "clipboard-svg") {
     const svgPromise = exportToSvg(
       elements,
@@ -167,7 +191,19 @@ export const exportCanvas = async (
     }
   }
 
-  const tempCanvas = exportToCanvas(elements, appState, files, {
+  /** PDF is rasterized; keep at least 2× and up to 4× for sharper text than PNG/clipboard. */
+  const appStateForCanvas =
+    type === "pdf"
+      ? {
+          ...appState,
+          exportScale: Math.min(
+            4,
+            Math.max(appState.exportScale, 2),
+          ),
+        }
+      : appState;
+
+  const tempCanvas = exportToCanvas(elements, appStateForCanvas, files, {
     exportBackground,
     viewBackgroundColor,
     exportPadding,
@@ -176,8 +212,8 @@ export const exportCanvas = async (
 
   const rasterCanvasWithWatermark = async () => {
     const canvas = await tempCanvas;
-    if (watermark?.enabled && watermark.imageSrc) {
-      await drawBrandingWatermarkOnCanvas(canvas, watermark.imageSrc);
+    if (exportWatermark) {
+      await drawBrandingWatermarkOnCanvas(canvas, exportWatermark.imageSrc);
     }
     return canvas;
   };
@@ -204,39 +240,48 @@ export const exportCanvas = async (
       fileHandle,
     });
   } else if (type === "pdf") {
-    const sourceCanvas = await tempCanvas;
-    let canvas = scaleCanvasForPdfExport(sourceCanvas);
-    if (watermark?.enabled && watermark.imageSrc) {
-      await drawBrandingWatermarkOnCanvas(canvas, watermark.imageSrc);
-    }
-    const { jsPDF } = await import("jspdf");
-    const w = canvas.width;
-    const h = canvas.height;
-    const pdf = new jsPDF({
-      orientation: w > h ? "landscape" : "portrait",
-      unit: "px",
-      format: [w, h],
-    });
-    try {
-      // Prefer embedding the canvas directly to avoid a giant base64 string from toDataURL.
-      pdf.addImage(canvas, "PNG", 0, 0, w, h, undefined, "FAST");
-      return fileSave(Promise.resolve(pdf.output("blob")), {
-        description: "Export to PDF",
-        name,
-        extension: "pdf",
-        mimeTypes: [MIME_TYPES.pdf],
-        fileHandle,
-      });
-    } catch (error: any) {
-      const msg = error?.message ?? "";
-      if (
-        error instanceof RangeError ||
-        /invalid string length|Maximum call stack/i.test(msg)
-      ) {
-        throw new Error(t("errors.pdfExportTooLarge"));
+    // Build PDF in a promise but call fileSave immediately (like PNG). Otherwise we await
+    // canvas/jsPDF first and the save picker runs without a user gesture (Chrome error).
+    const pdfBlobPromise = (async () => {
+      const sourceCanvas = await tempCanvas;
+      const canvas = scaleCanvasForPdfExport(sourceCanvas);
+      // Draw on the final raster jsPDF embeds (same pixels as toDataURL). Doing this
+      // after downscale keeps the logo readable and avoids any pre-scale path issues.
+      if (exportWatermark) {
+        await drawBrandingWatermarkOnCanvas(canvas, exportWatermark.imageSrc);
       }
-      throw error;
-    }
+      const { jsPDF } = await import("jspdf");
+      const w = canvas.width;
+      const h = canvas.height;
+      const pdf = new jsPDF({
+        orientation: w > h ? "landscape" : "portrait",
+        unit: "px",
+        format: [w, h],
+      });
+      try {
+        // Prefer embedding the canvas directly to avoid a giant base64 string from toDataURL.
+        // SLOW = lossless PNG predictors + stronger zlib (FAST used weaker filters and looked soft).
+        pdf.addImage(canvas, "PNG", 0, 0, w, h, undefined, "SLOW");
+        return pdf.output("blob");
+      } catch (error: any) {
+        const msg = error?.message ?? "";
+        if (
+          error instanceof RangeError ||
+          /invalid string length|Maximum call stack/i.test(msg)
+        ) {
+          throw new Error(t("errors.pdfExportTooLarge"));
+        }
+        throw error;
+      }
+    })();
+
+    return fileSave(pdfBlobPromise, {
+      description: "Export to PDF",
+      name,
+      extension: "pdf",
+      mimeTypes: [MIME_TYPES.pdf],
+      fileHandle,
+    });
   } else if (type === "clipboard") {
     try {
       const blob = canvasToBlob(rasterCanvasWithWatermark());
