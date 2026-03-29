@@ -12,8 +12,15 @@ const DEFAULT_RENDER_SCALE = 2;
  * string length (`Array.join` / `toDataURL`). Downscale before embedding.
  * Limits are tuned for sharper text while still avoiding typical browser/JS limits.
  */
-export const MAX_PDF_EXPORT_DIMENSION_PX = 8192;
-export const MAX_PDF_EXPORT_PIXELS = 72_000_000;
+export const MAX_PDF_EXPORT_DIMENSION_PX = 12_288;
+export const MAX_PDF_EXPORT_PIXELS = 100_000_000;
+
+/**
+ * PDF rasterization uses a higher scale than the image-export slider alone (max 5×),
+ * otherwise exports look soft on screen and in print.
+ */
+export const PDF_RASTER_SCALE_MIN = 4;
+export const PDF_RASTER_SCALE_MAX = 6;
 
 export const scaleCanvasForPdfExport = (
   canvas: HTMLCanvasElement,
