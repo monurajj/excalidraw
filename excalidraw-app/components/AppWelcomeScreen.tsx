@@ -2,6 +2,8 @@ import { useI18n } from "@excalidraw/excalidraw/i18n";
 import { WelcomeScreen } from "@excalidraw/excalidraw/index";
 import React from "react";
 
+import "./AppWelcomeScreen.scss";
+
 export const AppWelcomeScreen: React.FC<{
   onCollabDialogOpen: () => any;
   isCollabEnabled: boolean;
@@ -16,7 +18,14 @@ export const AppWelcomeScreen: React.FC<{
       <WelcomeScreen.Hints.ToolbarHint />
       <WelcomeScreen.Hints.HelpHint />
       <WelcomeScreen.Center>
-        <WelcomeScreen.Center.Logo />
+        <WelcomeScreen.Center.Logo>
+          <img
+            src="/codemastilogo.png"
+            alt="codemastilogo"
+            className="AppWelcomeScreen-logo"
+            draggable={false}
+          />
+        </WelcomeScreen.Center.Logo>
         <WelcomeScreen.Center.Heading>
           {t("welcomeScreen.app.center_heading")}
           <br />
