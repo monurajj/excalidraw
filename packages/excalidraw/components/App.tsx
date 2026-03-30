@@ -275,6 +275,7 @@ import type {
   FileId,
   NonDeletedExcalidrawElement,
   ExcalidrawTextContainer,
+  ExcalidrawFrameElement,
   ExcalidrawFrameLikeElement,
   ExcalidrawMagicFrameElement,
   ExcalidrawIframeLikeElement,
@@ -11140,9 +11141,11 @@ class App extends React.Component<AppProps, AppState> {
             scenePointer.x,
             scenePointer.y,
           );
-          hitElements.forEach((hitElement) =>
-            this.elementsPendingErasure.add(hitElement.id),
-          );
+          hitElements.forEach((hitElement) => {
+            if (hitElement.type !== "image") {
+              this.elementsPendingErasure.add(hitElement.id);
+            }
+          });
         }
         this.eraseElements();
         return;
@@ -11554,6 +11557,7 @@ class App extends React.Component<AppProps, AppState> {
   private initializeImage = async (
     placeholderImageElement: ExcalidrawImageElement,
     imageFile: File,
+    opts?: { isPdf?: boolean },
   ) => {
     // at this point this should be guaranteed image file, but we do this check
     // to satisfy TS down the line
@@ -11655,10 +11659,24 @@ class App extends React.Component<AppProps, AppState> {
               fileId,
             );
 
-            const naturalDimensions = this.getImageNaturalDimensions(
-              initializedImageElement,
-              imageHTML,
-            );
+            const naturalDimensions = opts?.isPdf
+              ? {
+                  x:
+                    initializedImageElement.x +
+                    initializedImageElement.width / 2 -
+                    imageHTML.naturalWidth / 2,
+                  y:
+                    initializedImageElement.y +
+                    initializedImageElement.height / 2 -
+                    imageHTML.naturalHeight / 2,
+                  width: imageHTML.naturalWidth,
+                  height: imageHTML.naturalHeight,
+                  crop: null,
+                }
+              : this.getImageNaturalDimensions(
+                  initializedImageElement,
+                  imageHTML,
+                );
 
             // no need to create a new instance anymore, just assign the natural dimensions
             Object.assign(initializedImageElement, naturalDimensions);
@@ -11760,7 +11778,7 @@ class App extends React.Component<AppProps, AppState> {
         }
       }
       if (allPages.length) {
-        void this.insertImages(allPages, x, y, "vertical");
+        void this.insertImages(allPages, x, y, "vertical", { isPdf: true });
       }
     } catch (error: any) {
       if (error.name !== "AbortError") {
@@ -11927,7 +11945,9 @@ class App extends React.Component<AppProps, AppState> {
     sceneY: number,
   ) => {
     const imageFiles = await pdfFileToImageFiles(file);
-    return this.insertImages(imageFiles, sceneX, sceneY, "vertical");
+    return this.insertImages(imageFiles, sceneX, sceneY, "vertical", {
+      isPdf: true,
+    });
   };
 
   private insertImages = async (
@@ -11935,6 +11955,7 @@ class App extends React.Component<AppProps, AppState> {
     sceneX: number,
     sceneY: number,
     layout: "grid" | "vertical" = "grid",
+    opts?: { isPdf?: boolean },
   ) => {
     const gridPadding = 50 / this.state.zoom.value;
     const positionElements =
@@ -11957,6 +11978,7 @@ class App extends React.Component<AppProps, AppState> {
           return await this.initializeImage(
             placeholder,
             await normalizeFile(imageFiles[i]),
+            opts,
           );
         } catch (error: any) {
           this.setState({
@@ -11974,16 +11996,40 @@ class App extends React.Component<AppProps, AppState> {
       sceneY,
       gridPadding,
     );
+
+    const newFrames: ExcalidrawFrameLikeElement[] = [];
+    if (opts?.isPdf) {
+      const updated: typeof positioned = [];
+      positioned.forEach((el, index) => {
+        const frame = newFrameElement({
+          x: el.x,
+          y: el.y,
+          width: el.width,
+          height: el.height,
+          name: imageFiles[index]?.name?.replace(/\.[^/.]+$/, "") || `Page ${index + 1}`,
+        });
+        updated.push(newElementWith(el, { frameId: frame.id }));
+        newFrames.push(frame);
+      });
+      positioned.splice(0, positioned.length, ...updated);
+    }
+
     const positionedMap = arrayToMap(positioned);
 
-    const nextElements = this.scene
-      .getElementsIncludingDeleted()
-      .map((el) => positionedMap.get(el.id) ?? initializedMap.get(el.id) ?? el);
+
+    const nextElements = [
+      ...this.scene
+        .getElementsIncludingDeleted()
+        .map((el) => positionedMap.get(el.id) ?? initializedMap.get(el.id) ?? el),
+      ...newFrames,
+    ];
 
     this.updateScene({
       appState: {
         selectedElementIds: makeNextSelectedElementIds(
-          Object.fromEntries(positioned.map((el) => [el.id, true])),
+          Object.fromEntries(
+            (newFrames.length ? newFrames : positioned).map((el) => [el.id, true]),
+          ),
           this.state,
         ),
       },
@@ -12064,7 +12110,9 @@ class App extends React.Component<AppProps, AppState> {
           return;
         }
       }
-      return this.insertImages(allPages, sceneX, sceneY, "vertical");
+      return this.insertImages(allPages, sceneX, sceneY, "vertical", {
+        isPdf: true,
+      });
     }
 
     const excalidrawLibrary_ids = dataTransferList.getData(

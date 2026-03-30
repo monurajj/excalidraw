@@ -252,29 +252,64 @@ export const exportCanvas = async (
     // Build PDF in a promise but call fileSave immediately (like PNG). Otherwise we await
     // canvas/jsPDF first and the save picker runs without a user gesture (Chrome error).
     const pdfBlobPromise = (async () => {
-      const sourceCanvas = await tempCanvas;
-      const canvas = scaleCanvasForPdfExport(sourceCanvas);
-      // Draw on the final raster jsPDF embeds (same pixels as toDataURL). Doing this
-      // after downscale keeps the logo readable and avoids any pre-scale path issues.
-      if (exportWatermark) {
-        await drawBrandingWatermarkOnCanvas(canvas, exportWatermark.imageSrc);
-      }
+      const frames = elements.filter(isFrameLikeElement);
       const { jsPDF } = await import("jspdf");
-      const wPx = Math.max(1, canvas.width);
-      const hPx = Math.max(1, canvas.height);
-      // jsPDF is most reliable with pt/mm; very large `unit: "px"` pages can yield invalid or 0-byte PDFs.
-      const CSS_PX_TO_PT = 72 / 96;
-      const wPt = wPx * CSS_PX_TO_PT;
-      const hPt = hPx * CSS_PX_TO_PT;
-      const pdf = new jsPDF({
-        orientation: wPt > hPt ? "landscape" : "portrait",
-        unit: "pt",
-        format: [wPt, hPt],
-        hotfixes: ["px_scaling"],
-      });
+      let pdf: any = null;
+
+      const processCanvas = async (canvasPromise: Promise<HTMLCanvasElement>) => {
+        const sourceCanvas = await canvasPromise;
+        const canvas = scaleCanvasForPdfExport(sourceCanvas);
+        if (exportWatermark) {
+          await drawBrandingWatermarkOnCanvas(canvas, exportWatermark.imageSrc);
+        }
+        const wPx = Math.max(1, canvas.width);
+        const hPx = Math.max(1, canvas.height);
+        const CSS_PX_TO_PT = 72 / 96;
+        const wPt = wPx * CSS_PX_TO_PT;
+        const hPt = hPx * CSS_PX_TO_PT;
+        return { canvas, wPt, hPt };
+      };
+
       try {
-        // SLOW = lossless PNG predictors + stronger zlib (FAST used weaker filters and looked soft).
-        pdf.addImage(canvas, "PNG", 0, 0, wPt, hPt, undefined, "SLOW");
+        if (!exportingFrame && frames.length > 0) {
+          // Multi-page export Mode
+          for (let i = 0; i < frames.length; i++) {
+            const frame = frames[i];
+            const pageCanvasPromise = exportToCanvas(elements, appStateForCanvas, files, {
+              exportBackground,
+              viewBackgroundColor,
+              exportPadding,
+              exportingFrame: frame,
+            });
+            const { canvas, wPt, hPt } = await processCanvas(pageCanvasPromise);
+
+            if (!pdf) {
+              pdf = new jsPDF({
+                orientation: wPt > hPt ? "landscape" : "portrait",
+                unit: "pt",
+                format: [wPt, hPt],
+                hotfixes: ["px_scaling"],
+              });
+            } else {
+              pdf.addPage([wPt, hPt], wPt > hPt ? "landscape" : "portrait");
+            }
+            pdf.addImage(canvas, "PNG", 0, 0, wPt, hPt, undefined, "SLOW");
+          }
+        } else {
+          // Single-page export Mode
+          const { canvas, wPt, hPt } = await processCanvas(tempCanvas);
+          pdf = new jsPDF({
+            orientation: wPt > hPt ? "landscape" : "portrait",
+            unit: "pt",
+            format: [wPt, hPt],
+            hotfixes: ["px_scaling"],
+          });
+          pdf.addImage(canvas, "PNG", 0, 0, wPt, hPt, undefined, "SLOW");
+        }
+
+        if (!pdf) {
+          throw new Error(t("errors.pdfExportEmpty"));
+        }
         const ab = pdf.output("arraybuffer");
         if (ab.byteLength === 0) {
           throw new Error(t("errors.pdfExportEmpty"));
@@ -292,6 +327,8 @@ export const exportCanvas = async (
       }
     })();
 
+    // Pass the promise directly to fileSave to preserve the user gesture.
+    // browser-fs-access will show the file picker immediately.
     return fileSave(pdfBlobPromise, {
       description: "Export to PDF",
       name,

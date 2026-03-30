@@ -7,6 +7,7 @@ import {
 import {
   elementCenterPoint,
   isFreeDrawElement,
+  isLinearElement,
   newElementWith,
 } from "@excalidraw/element";
 import {
@@ -24,6 +25,7 @@ import type {
   ElementsMap,
   ExcalidrawElement,
   ExcalidrawFreeDrawElement,
+  ExcalidrawLinearElement,
   OrderedExcalidrawElement,
 } from "@excalidraw/element/types";
 
@@ -155,6 +157,110 @@ const splitFreeDrawByEraser = (
   });
 };
 
+const splitLinearByEraser = (
+  element: ExcalidrawLinearElement,
+  elementsMap: ElementsMap,
+  eraserSegments: LineSegment<GlobalPoint>[],
+  brushRadius: number,
+): ExcalidrawLinearElement[] | "delete" | null => {
+  const pts = element.points;
+  if (pts.length < 2) {
+    return "delete";
+  }
+
+  const center = elementCenterPoint(element, elementsMap);
+  const tol = brushRadius + element.strokeWidth / 2;
+
+  const toGlobal = (lx: number, ly: number) =>
+    pointRotateRads(
+      pointFrom<GlobalPoint>(element.x + lx, element.y + ly),
+      center,
+      element.angle,
+    );
+
+  const nearEraser = (gp: GlobalPoint) => {
+    for (const es of eraserSegments) {
+      if (distanceToLineSegment(gp, es) <= tol) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const n = pts.length;
+  const bad = new Array(n).fill(false);
+  for (let i = 0; i < n; i++) {
+    if (nearEraser(toGlobal(pts[i][0], pts[i][1]))) {
+      bad[i] = true;
+    }
+  }
+  for (let i = 0; i < n - 1; i++) {
+    const edge = lineSegment(
+      toGlobal(pts[i][0], pts[i][1]),
+      toGlobal(pts[i + 1][0], pts[i + 1][1]),
+    );
+    for (const es of eraserSegments) {
+      if (lineSegmentsDistance(edge, es) <= tol) {
+        bad[i] = true;
+        bad[i + 1] = true;
+        break;
+      }
+    }
+  }
+
+  const runs: [number, number][] = [];
+  let s: number | null = null;
+  for (let i = 0; i < n; i++) {
+    if (!bad[i]) {
+      if (s === null) {
+        s = i;
+      }
+    } else {
+      if (s !== null && i - 1 >= s && i - 1 - s >= 1) {
+        runs.push([s, i - 1]);
+      }
+      s = null;
+    }
+  }
+  if (s !== null && n - 1 >= s && n - 1 - s >= 1) {
+    runs.push([s, n - 1]);
+  }
+
+  if (runs.length === 0) {
+    return "delete";
+  }
+
+  const allKept =
+    runs.length === 1 && runs[0][0] === 0 && runs[0][1] === n - 1;
+  if (allKept) {
+    return null;
+  }
+
+  return runs.map(([a, b]) => {
+    const sliceP = pts.slice(a, b + 1);
+    const bx = sliceP[0][0];
+    const by = sliceP[0][1];
+    const rebased = sliceP.map((p) =>
+      pointFrom<LocalPoint>(p[0] - bx, p[1] - by),
+    );
+
+    return {
+      ...element,
+      id: randomId(),
+      seed: randomInteger(),
+      x: element.x + bx,
+      y: element.y + by,
+      points: rebased,
+      boundElements: null,
+      startBinding: null,
+      endBinding: null,
+      version: element.version + 1,
+      versionNonce: randomInteger(),
+      updated: getUpdatedTimestamp(),
+    };
+  });
+};
+
 /**
  * Stroke eraser: carve pencil (freedraw) strokes; remove other shapes entirely when touched.
  */
@@ -179,13 +285,28 @@ export const applyStrokeEraserToElements = (
       next.push(el);
       continue;
     }
-    if (el.locked) {
+    if (el.locked || el.type === "image") {
       next.push(el);
       continue;
     }
 
     if (isFreeDrawElement(el)) {
       const split = splitFreeDrawByEraser(el, elementsMap, segs, brushRadius);
+      if (split === "delete") {
+        changed = true;
+        next.push(newElementWith(el, { isDeleted: true }));
+      } else if (split === null) {
+        next.push(el);
+      } else {
+        changed = true;
+        next.push(newElementWith(el, { isDeleted: true }));
+        appended.push(...split);
+      }
+      continue;
+    }
+
+    if (isLinearElement(el)) {
+      const split = splitLinearByEraser(el, elementsMap, segs, brushRadius);
       if (split === "delete") {
         changed = true;
         next.push(newElementWith(el, { isDeleted: true }));

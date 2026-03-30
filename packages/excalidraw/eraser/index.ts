@@ -105,7 +105,7 @@ export class EraserTrail extends AnimatedTrail {
     );
 
     const candidateElements = this.app.visibleElements.filter(
-      (el) => !el.locked,
+      (el) => !el.locked && el.type !== "image",
     );
 
     const candidateElementsMap = arrayToMap(candidateElements);
