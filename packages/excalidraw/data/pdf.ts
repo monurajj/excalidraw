@@ -5,7 +5,7 @@ const PDFJS_DIST_VERSION = "4.10.38";
 
 /** Max width/height in CSS pixels for one rendered PDF page (avoids huge canvases). */
 const MAX_PAGE_DIMENSION_PX = 4096;
-const DEFAULT_RENDER_SCALE = 2;
+const DEFAULT_RENDER_SCALE = 1;
 
 /**
  * Raster PDF export uses PNG + jsPDF strings; very large canvases exceed JS max

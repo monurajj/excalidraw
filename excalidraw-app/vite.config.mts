@@ -119,7 +119,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       Sitemap({
-        hostname: "https://excalidraw.com",
+        hostname: "https://cmteachingboard.codemasti.com",
         outDir: "build",
         changefreq: "monthly",
         // its static in public folder
@@ -212,30 +212,16 @@ export default defineConfig(({ mode }) => {
           maximumFileSizeToCacheInBytes: 2.3 * 1024 ** 2, // 2.3MB
         },
         manifest: {
-          short_name: "Excalidraw",
-          name: "Excalidraw",
+          short_name: "CM whiteboard",
+          name: "CM whiteboard",
           description:
-            "Excalidraw is a whiteboard tool that lets you easily sketch diagrams that have a hand-drawn feel to them.",
+            "CM whiteboard is a virtual collaborative whiteboard tool that lets you easily sketch diagrams that have a hand-drawn feel to them.",
           icons: [
             {
-              src: "android-chrome-192x192.png",
-              sizes: "192x192",
-              type: "image/png",
-            },
-            {
-              src: "apple-touch-icon.png",
-              type: "image/png",
-              sizes: "180x180",
-            },
-            {
-              src: "favicon-32x32.png",
-              sizes: "32x32",
-              type: "image/png",
-            },
-            {
-              src: "favicon-16x16.png",
-              sizes: "16x16",
-              type: "image/png",
+              src: "favicon.ico",
+              sizes: "48x48",
+              type: "image/x-icon",
+              purpose: "any",
             },
           ],
           start_url: "/",

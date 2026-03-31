@@ -49,6 +49,8 @@ const JSONExportModal = ({
   watermarkImageSrc?: string;
 }) => {
   const { onExportToBackend } = exportOpts;
+  const [isPdfExporting, setIsPdfExporting] = React.useState(false);
+
   return (
     <div className="ExportDialog ExportDialog--json">
       <div className="ExportDialog-cards">
@@ -86,7 +88,10 @@ const JSONExportModal = ({
               title={t("exportDialog.pdf_button")}
               aria-label={t("exportDialog.pdf_button")}
               showAriaLabel={true}
+              isLoading={isPdfExporting}
+              disabled={isPdfExporting}
               onClick={async () => {
+                setIsPdfExporting(true);
                 try {
                   trackEvent("export", "pdf", `ui (${getFrame()})`);
                   const { exportedElements, exportingFrame } =
@@ -110,13 +115,18 @@ const JSONExportModal = ({
                       hostBrandingImageSrc: watermarkImageSrc,
                     },
                   );
-                  setAppState({ openDialog: null });
+                  setAppState({
+                    openDialog: null,
+                    toast: { message: t("toast.pdfSaved"), duration: 3000 },
+                  });
                 } catch (error: any) {
                   if (error?.name === "AbortError") {
                     console.warn(error);
                     return;
                   }
                   setAppState({ errorMessage: error.message });
+                } finally {
+                  setIsPdfExporting(false);
                 }
               }}
             />
